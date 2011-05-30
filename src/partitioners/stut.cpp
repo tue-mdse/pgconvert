@@ -18,7 +18,7 @@ void StutteringPartitioner::quotient(ParityGame& quotient)
 		  Vertex& repr = quotient.vertex(dst);
 		  repr.player = m_vertices[*v].v->player;
 		  repr.prio = m_vertices[*v].v->prio;
-		  if (divergent(&(*B), repr.player))
+		  if (divergent(&(*B)))
 			  repr.out.insert(dst);
 		  for (EdgeList::const_iterator e = B->m_incoming.begin(); e != B->m_incoming.end(); ++e)
 		  {
@@ -33,7 +33,7 @@ void StutteringPartitioner::quotient(ParityGame& quotient)
 	  }
 }
 
-bool StutteringPartitioner::divergent(const Block* B, Player p)
+bool StutteringPartitioner::divergent(const Block* B)
 {
 	  for (EdgeList::const_iterator it = B->m_incoming.begin(); it != B->m_incoming.end(); ++it)
 		  if (m_vertices[it->src].block == B)
@@ -64,7 +64,7 @@ void StutteringPartitioner::create_initial_partition()
 		B->update();
 }
 
-bool StutteringPartitioner::split(const Block* B1, const Block* B2)
+bool StutteringPartitioner::split(const Block* B1, const Block* B2, VertexList& pos)
 {
 	if (B1 == B2) return false;
 	VertexList todo;
@@ -78,13 +78,12 @@ bool StutteringPartitioner::split(const Block* B1, const Block* B2)
 	{
 		return false;
 	}
-	m_split.clear();
 	while (not todo.empty())
 	{
 		size_t vi = todo.front();
 		VertexInfo& v = m_vertices[vi];
 		v.visited = true;
-		m_split.push_back(vi);
+		pos.push_back(vi);
 		for (VertexSet::const_iterator pred = v.v->in.begin(); pred != v.v->in.end(); ++pred)
 			if (m_vertices[*pred].block == B1 and not m_vertices[*pred].visited)
 				todo.push_back(*pred);

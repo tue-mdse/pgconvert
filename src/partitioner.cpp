@@ -2,15 +2,6 @@
 
 namespace pg {
 
-Partitioner::Partitioner(ParityGame& pg)
-{
-	  m_vertices.resize(pg.vertices().size());
-	  for (size_t i = 0; i < m_vertices.size(); ++i)
-	  {
-		  m_vertices[i].v = &pg.vertices()[i];
-	  }
-}
-
 void Partitioner::dump(std::ostream& s)
 {
 	VertexList::const_iterator v;
@@ -63,10 +54,17 @@ bool Block::update(Block* has_edge_from)
 	return result;
 }
 
-void Partitioner::partition(ParityGame* quotient)
+void Partitioner::partition(ParityGame& pg, ParityGame* quotient)
 {
+	m_vertices.resize(pg.vertices().size());
+	for (size_t i = 0; i < m_vertices.size(); ++i)
+	{
+		m_vertices[i].v = &pg.vertices()[i];
+	}
+
 	bool found_splitter = true;
 	Block* B1;
+	VertexList pos;
 	create_initial_partition();
 	while (found_splitter)
 	{
@@ -90,7 +88,8 @@ void Partitioner::partition(ParityGame* quotient)
 			while (not adjacent.empty())
 			{
 				B1 = adjacent.front();
-				if (split(B1, &(*B2)))
+				pos.clear();
+				if (split(B1, &(*B2), pos))
 				{
 					found_splitter = true;
 					adjacent.clear();
@@ -101,7 +100,7 @@ void Partitioner::partition(ParityGame* quotient)
 		}
 		if (found_splitter)
 		{
-			if (refine(B1))
+			if (refine(*B1, pos))
 				for (BlockList::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
 					B->m_stable = false;
 			// TODO: remove this?
@@ -116,21 +115,21 @@ void Partitioner::partition(ParityGame* quotient)
 		this->quotient(*quotient);
 }
 
-bool Partitioner::refine(Block* B)
+bool Partitioner::refine(Block& B, VertexList& s)
 {
 	// m_split contains a subset of B
 	m_blocks.push_back(Block(*this, m_blocks.size()));
 	Block& C = m_blocks.back();
-	while (not m_split.empty())
+	while (not s.empty())
 	{
-		size_t v = m_split.front();
+		size_t v = s.front();
 		C.vertices.push_back(v);
-		B->vertices.remove(v);
+		B.vertices.remove(v);
 		m_vertices[v].block = &C;
-		m_split.pop_front();
+		s.pop_front();
 	}
-	bool result = B->update(&C);
-	result = result or C.update(B);
+	bool result = B.update(&C);
+	result = result or C.update(&B);
 	return result;
 }
 

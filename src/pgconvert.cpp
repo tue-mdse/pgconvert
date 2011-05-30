@@ -11,17 +11,31 @@
 
 namespace pg {
 
+/**
+ * @class Equivalence
+ * @brief Class representing an equivalence that can be used to reduce a parity game.
+ */
 class Equivalence
 {
 public:
+	/**
+	 * Equivalences that an Equivalence object may represent.
+	 */
 	enum Eq {
-		scc     = 0,
-		stut    = 1,
-		gstut   = 2,
-		invalid = 3
+		scc     = 0,//!< SCC decomposition
+		stut    = 1,//!< Stuttering equivalence
+		gstut   = 2,//!< Governed stuttering equivalence
+		invalid = 3 //!< Value indicating invalid equivalence name.
 	};
+	/// @brief Default constructor.
 	Equivalence() {}
+	/// @brief Copy constructor.
 	Equivalence(const Equivalence& other) : m_value(other.m_value) {}
+	/**
+	 * @brief Constructs an Equivalence object based on a textual representation.
+	 * @param name The name of the equivalence. Can be one of @a m_names, any other
+	 *   value is interpreted as @c invalid.
+	 */
 	Equivalence(const std::string& name)
 	{
 		if (m_names[(int)scc] == name) m_value = scc; else
@@ -29,26 +43,31 @@ public:
 		if (m_names[(int)gstut] == name) m_value = gstut; else
 		m_value = invalid;
 	}
+	/// @brief Returns the (short) name of the equivalence this object represents.
 	const std::string name() const
 	{
 		return m_names[m_value];
 	}
+	/// @brief Returns a description (long name) of the equivalence this object represents.
 	const std::string desc() const
 	{
 		return m_descs[m_value];
 	}
+	/// @brief Used to iterate through valid equivalence names.
 	static const std::string name(unsigned int index)
 	{
 		if (index < invalid)
 			return m_names[index];
 		return std::string();
 	}
+	/// @brief Used to iterate through valid equivalence descriptions.
 	static const std::string desc(unsigned int index)
 	{
 		if (index < invalid)
 			return m_descs[index];
 		return std::string();
 	}
+	/// @brief Compare with one of the predefined constants.
 	bool operator==(Eq other) const
 	{
 		return m_value == other;
@@ -70,6 +89,10 @@ const char* Equivalence::m_descs[4] =
 
 }
 
+/**
+ * @class pgconvert
+ * @brief Tool class that can execute parity game reductions.
+ */
 class pgconvert : public mcrl2::utilities::tools::input_output_tool
 {
 private:
@@ -87,6 +110,7 @@ public:
 		"governed stuttering equivalence.",
 		// Known issues:
 		"None") {}
+	/// @brief Runs the tool (see mcrl2::utilities::tools::input_output_tool::run).
 	bool run()
 	{
 		std::istream* instream = &std::cin;
@@ -124,22 +148,23 @@ public:
 		}
 		else if (m_equivalence == pg::Equivalence::stut)
 		{
-			pg.collapse_sccs();
-			pg::StutteringPartitioner p(pg);
+			pg::StutteringPartitioner p;
 			pg::ParityGame output;
-			p.partition(&output);
+			pg.collapse_sccs();
+			p.partition(pg, &output);
 			output.dump(*outstream);
 		}
 		else if (m_equivalence == pg::Equivalence::gstut)
 		{
-			pg::GovernedStutteringPartitioner p(pg);
+			pg::GovernedStutteringPartitioner p;
 			pg::ParityGame output;
-			p.partition(&output);
+			p.partition(pg, &output);
 			output.dump(*outstream);
 		}
 		return true;
 	}
 protected:
+	/// @brief Adds the --equivalence option (see mcrl2::utilities::tools::input_output_tool::add_options).
 	void add_options(mcrl2::utilities::interface_description& desc)
 	{
 		unsigned int i = 0;
@@ -152,6 +177,7 @@ protected:
 		}
 		desc.add_option("equivalence", mcrl2::utilities::make_mandatory_argument("NAME"), "The conversion method to use, choose from" + eqs.str(), 'e');
 	}
+	/// @brief Parses the --equivalence option (see mcrl2::utilities::tools::input_output_tool::parse_options).
 	void parse_options(const mcrl2::utilities::command_line_parser& parser)
 	{
 		mcrl2::utilities::tools::input_output_tool::parse_options(parser);

@@ -95,11 +95,10 @@ bool GovernedStutteringPartitioner::divergent(const Block* B, Player p)
 	  return true;
 }
 
-bool GovernedStutteringPartitioner::split(const Block* B1, const Block* B2, VertexList &todo, Player p)
+bool GovernedStutteringPartitioner::split(const Block* B1, VertexList& pos, VertexList &todo, Player p)
 {
-	  m_split.clear();
-	  attractor(B1, p, todo, m_split);
-	  return not (m_split.empty() or (m_split.size() == B1->vertices.size()));
+	  attractor(B1, p, todo, pos);
+	  return not (pos.empty() or (pos.size() == B1->vertices.size()));
 }
 
 
@@ -126,7 +125,7 @@ void GovernedStutteringPartitioner::create_initial_partition()
 		B->update();
 }
 
-bool GovernedStutteringPartitioner::split(const Block* B1, const Block* B2)
+bool GovernedStutteringPartitioner::split(const Block* B1, const Block* B2, VertexList& pos)
 {
 	// Initialise edge list to all edges from B1 to B2
 	VertexList todo0, todo1;
@@ -141,9 +140,9 @@ bool GovernedStutteringPartitioner::split(const Block* B1, const Block* B2)
 			  todo0.push_back(*v);
 	}
 	todo1.assign(todo0.begin(), todo0.end());
-	if (split(B1, B2, todo0, even))
+	if (split(B1, pos, todo0, even))
 		return true;
-	if (split(B1, B2, todo1, odd))
+	if (split(B1, pos, todo1, odd))
 		return true;
 	return false;
 }
