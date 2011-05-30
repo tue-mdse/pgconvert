@@ -139,34 +139,47 @@ public:
 		}
 		pg::ParityGame pg;
 		mCRL2log(info) << "Loading parity game." << std::endl;
+		timer().start("load");
 		pg.load(*instream);
+		timer().finish("load");
 		mCRL2log(info) << "Performing " << m_equivalence.desc() << " reduction." << std::endl;
+		timer().start("reduce");
 		if (m_equivalence == pg::Equivalence::scc)
 		{
+			timer().start("scc reduction");
 			pg.collapse_sccs();
+			timer().finish("scc reduction");
 			pg.dump(*outstream);
 		}
 		else if (m_equivalence == pg::Equivalence::stut)
 		{
 			pg::StutteringPartitioner p;
 			pg::ParityGame output;
+			timer().start("scc reduction");
 			pg.collapse_sccs();
+			timer().finish("scc reduction");
+			timer().start("partition refinement");
 			p.partition(pg, &output);
+			timer().finish("partition refinement");
 			output.dump(*outstream);
 		}
 		else if (m_equivalence == pg::Equivalence::gstut)
 		{
 			pg::GovernedStutteringPartitioner p;
 			pg::ParityGame output;
+			timer().start("partition refinement");
 			p.partition(pg, &output);
+			timer().finish("partition refinement");
 			output.dump(*outstream);
 		}
+		timer().finish("reduce");
 		return true;
 	}
 protected:
 	/// @brief Adds the --equivalence option (see mcrl2::utilities::tools::input_output_tool::add_options).
 	void add_options(mcrl2::utilities::interface_description& desc)
 	{
+		mcrl2::utilities::tools::input_output_tool::add_options(desc);
 		unsigned int i = 0;
 		std::stringstream eqs;
 		std::string eq = pg::Equivalence::name(0);
