@@ -41,15 +41,18 @@ bool Block::update(Block* has_edge_from)
 		}
 		srcblock = dstblock;
 		const VertexSet& outgoing = m_partitioner.m_vertices[*v].v->out;
+		bool bottom = true;
 		for (VertexSet::const_iterator dst = outgoing.begin(); dst != outgoing.end(); ++dst)
 		{
 			dstblock = m_partitioner.m_vertices[*dst].block;
-			if (srcblock != dstblock)
+			if (srcblock == dstblock)
 			{
-				m_bottom.push_back(*v);
+				bottom = false;
 				break;
 			}
 		}
+		if (bottom)
+			m_bottom.push_back(*v);
 	}
 	return result;
 }
@@ -70,16 +73,17 @@ void Partitioner::partition(ParityGame& pg, ParityGame* quotient)
 	{
 		found_splitter = false;
 		// Try to find a splitter for an unstable block
-		for (BlockList::const_iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); ++B2)
+		for (BlockList::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); ++B2)
 		{
 			if (B2->m_stable)
 				continue;
 			std::list<Block*> adjacent;
+			adjacent.push_back(&(*B2));
 			for (std::list<Edge>::const_iterator e = B2->m_incoming.begin(); not found_splitter and e != B2->m_incoming.end(); ++e)
 			{
 				VertexInfo& v = m_vertices[e->src];
 				v.visitcounter = B2->m_index;
-				if (v.block->m_stable_for != &(*B2))
+				if (v.block->m_stable_for != &(*B2) and v.block != &(*B2))
 				{
 					adjacent.push_back(v.block);
 					v.block->m_stable_for = &(*B2);
