@@ -2,56 +2,204 @@
 #define __STUT_H
 
 #include "partitioner.h"
+#include <map>
 
-namespace pg {
+namespace graph {
+
+template <typename Label>
+class StutteringTraits
+{
+public:
+	struct block_t;
+
+	typedef graph::PartitionerTraits::vertex_t<block_t, Label> vertex_t;
+	typedef graph::KripkeStructure<vertex_t> graph_t;
+	typedef std::list<VertexIndex> vertexlist_t;
+
+	struct block_t : public PartitionerTraits::block_t
+	{
+		block_t(graph_t& pg, size_t index) : PartitionerTraits::block_t(index), pg(pg) {}
+		bool update(PartitionerTraits::block_t* has_edge_from=NULL)
+		{
+			block_t* srcblock = NULL;
+			block_t* dstblock = NULL;
+			bool result = false;
+			incoming.clear();
+			bottom.clear();
+			for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i)
+			{
+				vertex_t& v = pg.vertex(*i);
+				dstblock = v.block;
+				for (VertexSet::const_iterator src = v.in.begin(); src != v.in.end(); ++src)
+				{
+					srcblock = pg.vertex(*src).block;
+					if (srcblock != dstblock)
+					{
+						incoming.push_back(Edge(*src, *i));
+						result = result or (srcblock == has_edge_from);
+					}
+				}
+				srcblock = dstblock;
+				bool is_bottom = true;
+				for (VertexSet::const_iterator dst = v.out.begin(); dst != v.out.end(); ++dst)
+				{
+					dstblock = pg.vertex(*dst).block;
+					if (srcblock == dstblock)
+					{
+						is_bottom = false;
+						break;
+					}
+				}
+				if (is_bottom)
+					bottom.push_back(*i);
+			}
+			return result;
+		}
+		graph_t& pg; ///< The partition(er) to which the block belongs.
+		vertexlist_t bottom; ///< A list of vertices in the block that have only outgoing edges to other blocks.
+		EdgeList incoming; ///< A list of edges that have a destination in the block.
+	};
+
+	typedef std::list<block_t> blocklist_t;
+};
 
 /**
- * @class StutteringPartitioner
- * @brief Partitioner that can decide stuttering equivalence on parity games.
- *
- * The algorithm that this class implements assumes that the parity game that is
- * being refined does not contain any strongly connected components that consist
- * of vertices that have the same player and priority.
+ * @class GovernedStutteringPartitioner
+ * @brief Partitioner that decides governed stuttering equivalence.
  */
-class StutteringPartitioner : public Partitioner
+template <typename Label>
+class StutteringPartitioner : public Partitioner<StutteringTraits<Label> >
 {
+public:
+	typedef typename Partitioner<StutteringTraits<Label> >::graph_t graph_t;
+	typedef typename Partitioner<StutteringTraits<Label> >::block_t block_t;
+	typedef typename Partitioner<StutteringTraits<Label> >::vertex_t vertex_t;
+	typedef typename Partitioner<StutteringTraits<Label> >::blocklist_t blocklist_t;
+	using Partitioner<StutteringTraits<Label> >::m_blocks;
+	using Partitioner<StutteringTraits<Label> >::m_pg;
+	StutteringPartitioner(graph_t& pg) : Partitioner<StutteringTraits<Label> >(pg) {}
+	const blocklist_t blocks() const { return m_blocks; }
+	block_t& newblock() { m_blocks.push_back(block_t(m_pg, m_blocks.size())); return m_blocks.back(); }
 protected:
 	/**
 	 * @brief Creates the initial partition.
 	 *
-	 * A block is made for every priority/player combination occurring in the game.
+	 * A block is made for every priority occurring in the game.
 	 */
-	virtual void create_initial_partition();
+	void create_initial_partition()
+	{
+		typedef std::map<Label, block_t*> pmap;
+		pmap blocks;
+
+		// Assign blocks to vertices
+		for (size_t i = 0; i < m_pg.size(); ++i)
+		{
+			vertex_t& v = m_pg.vertex(i);
+			typename pmap::iterator B = blocks.find(v.label);
+			if (B == blocks.end())
+			{
+				m_blocks.push_back(block_t(m_pg, m_blocks.size()));
+				B = blocks.insert(std::make_pair(v.label, &m_blocks.back())).first;
+			}
+			v.block = B->second;
+			B->second->vertices.push_back(i);
+		}
+
+		for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
+		{
+			B->update();
+		}
+	}
 	/**
 	 * @brief Attempts to split @a B1 using @a B2
 	 *
-	 * This is done by looking at the @c visited member of the VertexInfo belonging to the
-	 * bottom vertices in @a B1. If all bottom vertices are marked, then @a B2 is not a
-	 * splitter of @a B1. Otherwise, the vertices that are marked are included in @a pos, and
-	 * the unmarked bottom vertices are marked visited. Then all unmarked vertices in @a B1
-	 * that can reach a node in @a pos are also included in @a pos.
+	 * This is done by calculating the attractor set of a set of vertices @e S. If @a B1 is
+	 * equal to @a B2, then @e S is the set of bottom vertices of @a B1. Otherwise, @e S is
+	 * the set of vertices in @a B1 that have an outgoing edge to @a B2. Everything in the
+	 * attractor set is stored in @a pos.
 	 * @param B1 The block being split.
 	 * @param B2 The splitter.
 	 * @param pos The list of vertices that is in the attractor set of @e S.
-	 * @return @c true if @a B2 is a splitter for @a B1, @c false otherwise.
+	 * @return @c true if @a pos is a non-empty strict subset of @a B1, @c false otherwise.
 	 */
-	virtual bool split(const Block* B1, const Block* B2, VertexList& pos);
+	bool split(const block_t* B1, const block_t* B2, VertexList& pos)
+	{
+		if (B1 == B2) return false;
+		VertexList todo;
+		for (VertexList::const_iterator v = B1->bottom.begin(); v != B1->bottom.end(); ++v)
+		{
+			if (m_pg.vertex(*v).visited())
+				todo.push_back(*v);
+			m_pg.vertex(*v).visit();
+		}
+		if (todo.size() == B1->bottom.size())
+		{
+			return false;
+		}
+		while (not todo.empty())
+		{
+			size_t vi = todo.front();
+			vertex_t& v = m_pg.vertex(vi);
+			v.visit();
+			pos.push_back(vi);
+			for (VertexSet::const_iterator pred = v.in.begin(); pred != v.in.end(); ++pred)
+				if (m_pg.vertex(*pred).block == B1 and not m_pg.vertex(*pred).visited())
+					todo.push_back(*pred);
+			todo.pop_front();
+		}
+		return true;
+	}
 	/**
 	 * @brief Quotients the parity game and stores the result in @a g.
 	 *
-	 * Quotienting is done by viewing each block as a vertex.
+	 * Quotienting is done by viewing each block as a vertex. The priority and player of a
+	 * block are defined as the priority and player of the first vertex in the block's
+	 * @c vertices member.
 	 * @param g ParityGame in which the quotient is stored.
 	 */
-	virtual void quotient(ParityGame& g);
+	void quotient(graph_t& quotient)
+	{
+		quotient.resize(m_blocks.size());
+		size_t src, dst, vc = 1;
+		for (typename blocklist_t::const_iterator B = m_blocks.begin(); B != m_blocks.end(); ++B, ++vc)
+		{
+			dst = B->index;
+			VertexList::const_iterator v = B->vertices.begin();
+			vertex_t& repr = quotient.vertex(dst);
+			repr.label = m_pg.vertex(*v).label;
+			if (divergent(&(*B)))
+			  repr.out.insert(dst);
+			for (EdgeList::const_iterator e = B->incoming.begin(); e != B->incoming.end(); ++e)
+				m_pg.vertex(m_pg.vertex(e->src).block->index).clear();
+			for (EdgeList::const_iterator e = B->incoming.begin(); e != B->incoming.end(); ++e)
+			{
+				src = m_pg.vertex(e->src).block->index;
+				if (not m_pg.vertex(src).visited())
+				{
+					quotient.vertex(src).out.insert(dst);
+					repr.in.insert(src);
+					m_pg.vertex(src).visit();
+				}
+			}
+		}
+	}
 private:
 	/**
-	 * Decides for a block @a B whether it is divergent.
-	 * @param B
-	 * @return @c true if the player of @a B can force play to stay in @a B, @c false otherwise.
+	 * Decide whether @a B is divergent for @a p. If player @a p can force the play to
+	 * stay in @a B from any vertex in @a B, then @a B is divergent for @a p.
+	 * @param B The block for which to decide divergence.
+	 * @param p The player for which to decide divergence.
+	 * @return @c true if @a B is divergent for @a p, @c false otherwise.
 	 */
-	bool divergent(const Block* B);
+	bool divergent(const block_t* B)
+	{
+		for (EdgeList::const_iterator it = B->incoming.begin(); it != B->incoming.end(); ++it)
+			if (m_pg.vertex(it->src).block == B)
+				return true;
+		return false;
+	}
 };
 
-}
+} // namespace graph
 
 #endif // __STUT_H

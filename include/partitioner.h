@@ -1,11 +1,13 @@
 #ifndef __PARTITIONER_H
 #define __PARTITIONER_H
 
+#include "vertex.h"
 #include "pg.h"
+#include <auto_ptr.h>
 #include <list>
+#include <vector>
 
-namespace pg
-{
+namespace graph {
 
 /**
  * @struct Edge
@@ -24,55 +26,62 @@ struct Edge
 };
 
 typedef std::list<Edge> EdgeList; ///< List of edges.
-typedef std::list<size_t> VertexList; ///< List of vertices (used when VertexSet is too expensive).
+typedef std::list<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
 
-class Partitioner;
-
-/**
- * @struct Block
- * @brief Class representing a block in a partition.
- */
-struct Block
+class PartitionerTraits
 {
+public:
+	template <typename Block, typename Label>
+	struct vertex_t : public graph::Vertex<Label>
+	{
+	public:
+		vertex_t() : graph::Vertex<Label>(), block(NULL), visitbit(false) {}
+		Block *block; ///< The block to which @c v belongs.
+		unsigned visitbit : 1; ///< Tag used by the partition refinement algorithms.
+		void visit() { visitbit = true; }
+		void clear() { visitbit = false; }
+		bool visited() { return visitbit; }
+	};
+
 	/**
-	 * @brief Constructor.
-	 * @param partitioner The partitioner to which the block belongs.
-	 * @param index The index in the partitioner's blocklist at which this block can be found.
+	 * @struct Block
+	 * @brief Class representing a block in a partition.
 	 */
-	Block(Partitioner& partitioner, size_t index) : m_index(index), m_stable_for(NULL), m_stable(false), m_partitioner(partitioner) {}
-	VertexList vertices; ///< The vertices in the block.
-	bool update(Block* has_edge_from=NULL); ///< Update the @c m_bottom and @c m_incoming members.
-	size_t m_index; ///< The index of the block in @c m_partitioner's @c blocklist.
-	const Block* m_stable_for; ///< A tag used by the partition refinement algorithms.
-	bool m_stable; ///< True when the block is stable in the current partition. Used by the partition refinement algorithms.
-	Partitioner& m_partitioner; ///< The partition(er) to which the block belongs.
-	VertexList m_bottom; ///< A list of vertices in the block that have outgoing edges to other blocks.
-	EdgeList m_incoming; ///< A list of edges that have a destination in the block.
-};
-
-typedef std::list<Block> BlockList; ///< List of blocks (effectively the representation of a partition).
-
-/**
- * @struct VertexInfo
- * @brief Annotations used by the partition refinement algorithms.
- */
-struct VertexInfo
-{
-	VertexInfo() : v(NULL), block(NULL), visitcounter(0), visited(false) {}
-	const Vertex *v; ///< The vertex that this record is an annotation for.
-	Block *block; ///< The block to which @c v belongs.
-	size_t visitcounter; ///< A generic counter tag, used by the partition refinement algorithms.
-	bool visited; ///< Tag used by the partition refinement algorithms.
+	struct block_t
+	{
+		/**
+		 * @brief Constructor.
+		 * @param partitioner The partitioner to which the block belongs.
+		 * @param index The index in the partitioner's blocklist at which this block can be found.
+		 */
+		block_t(size_t index) : index(index), stable(false), visited(false) {}
+		virtual bool update(block_t* has_edge_from=NULL) = 0; ///< Update the @c m_bottom and @c m_incoming members.
+		VertexList vertices; ///< The vertices in the block.
+		size_t index; ///< The index of the block in @c m_partitioner's @c blocklist.
+		unsigned char stable : 1; ///< True when the block is stable in the current partition. Used by the partition refinement algorithms.
+		unsigned char visited : 1;
+	};
 };
 
 /**
  * @class Partitioner
  * @brief Base class for partition refinement algorithms.
  */
+template <class partitioner_traits>
 class Partitioner
 {
-	friend struct Block;
+	friend class Block;
 public:
+	/**
+	 * @struct VertexInfo
+	 * @brief Annotations used by the partition refinement algorithms.
+	 */
+	typedef typename partitioner_traits::vertex_t vertex_t;
+	typedef typename partitioner_traits::block_t block_t;
+	typedef typename partitioner_traits::blocklist_t blocklist_t;
+	typedef typename partitioner_traits::graph_t graph_t;
+
+	Partitioner(graph_t& pg) : m_pg(pg) {}
 	/**
 	 * @brief Finds the coarsest partition for @a pg. If quotient is given, then
 	 *   it will be modified to contain the quotient of @a pg given the calculated
@@ -81,7 +90,64 @@ public:
 	 * @param quotient A reference to the parity game that will contain the quotient.
 	 *   The quotient is not stored if this parameter is @c NULL.
 	 */
-	void partition(ParityGame& pg, ParityGame* quotient=NULL);
+	void partition(graph_t* quotient=NULL)
+	{
+		bool found_splitter = true;
+		block_t* B1;
+		VertexList pos;
+		create_initial_partition();
+		while (found_splitter)
+		{
+			found_splitter = false;
+			// Try to find a splitter for an unstable block
+			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); ++B2)
+			{
+				if (not B2->stable and B2->vertices.size() > 1)
+				{
+					B1 = &(*B2);
+					found_splitter = split(B1, &(*B2), pos);
+				}
+			}
+			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); B2->stable = true, ++B2)
+			{
+				if (B2->stable)
+				{
+					continue;
+				}
+				std::list<block_t*> adjacent;
+				for (typename EdgeList::const_iterator e = B2->incoming.begin(); not found_splitter and e != B2->incoming.end(); ++e)
+				{
+					vertex_t& v = m_pg.vertex(e->src);
+					v.visit();
+					if (not v.block->visited and (v.block != &(*B2)) and (v.block->vertices.size() > 1))
+					{
+						adjacent.push_back(v.block);
+						v.block->visited = true;
+					}
+				}
+				while (not adjacent.empty())
+				{
+					B1 = adjacent.front();
+					B1->visited = false;
+					if (not found_splitter)
+						found_splitter = split(B1, &(*B2), pos);
+					adjacent.pop_front();
+				}
+				for (typename EdgeList::const_iterator e = B2->incoming.begin(); not found_splitter and e != B2->incoming.end(); ++e)
+					m_pg.vertex(e->src).clear();
+			}
+			if (found_splitter)
+			{
+				if (refine(*B1, pos))
+					for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
+					{
+						B->stable = false;
+					}
+			}
+		}
+		if (quotient)
+			this->quotient(*quotient);
+	}
 	/**
 	 * @brief Dump a textual representation of the partitioning to s.
 	 * @details For example, if the original parity game contained 5 nodes, the
@@ -92,7 +158,21 @@ public:
 { 4 }     @endverbatim
 	 * @param s The stream to dump the representation to.
 	 */
-	void dump(std::ostream& s);
+	void dump(std::ostream& s)
+	{
+		VertexList::const_iterator v;
+		for (typename blocklist_t::const_iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
+		{
+			s << "{ ";
+			v = B->vertices.begin();
+			s << *v++;
+			while (v != B->vertices.end())
+			{
+				s << ", " << *v++;
+			}
+			s << " }" << std::endl;
+		}
+	}
 protected:
 	/**
 	 * @brief Refines the partition with respect to Block @a B.
@@ -105,7 +185,23 @@ protected:
 	 * @return @c true if an inert edge in @a B became non-inert by splitting the Block,
 	 *   @c false otherwise.
 	 */
-	virtual bool refine(Block& B, VertexList& s);
+	bool refine(block_t& B, VertexList& s)
+	{	// m_split contains a subset of B
+		m_blocks.push_back(block_t(m_pg, m_blocks.size()));
+		block_t& C = m_blocks.back();
+		while (not s.empty())
+		{
+			size_t v = s.front();\
+			C.vertices.push_back(v);
+			B.vertices.remove(v);
+			m_pg.vertex(v).block = &C;
+			s.pop_front();
+		}
+		bool result = B.update(&C);
+		result = C.update(&B) or result;
+		return result;
+	}
+
 	/**
 	 * @brief Subclasses should override this method to provide an initial
 	 *     partitioning of the parity game.
@@ -115,6 +211,7 @@ protected:
 	 *   blocks that are pointed have been created by using @c m_blocks.resize().
 	 */
 	virtual void create_initial_partition() = 0;
+
 	/**
 	 * Tries to split @a B1 based on @a B2.
 	 * @param B1 The block that is potentially split by @a B2.
@@ -125,7 +222,7 @@ protected:
 	 * @post If @a B2 splits @a B1, then @a pos contains those vertices in @a B1 that can
 	 *   reach @a B2.
 	 */
-	virtual bool split(const Block* B1, const Block* B2, VertexList& pos) = 0;
+	virtual bool split(const block_t* B1, const block_t* B2, VertexList& pos) = 0;
 	/**
 	 * @brief Writes the quotient induced by the current partition to @a g.
 	 * @pre m_vertices represents the coarsest partition that the partition()
@@ -134,13 +231,12 @@ protected:
 	 *   has been stored in @a g.
 	 * @param g The ParityGame object in which to store the quotient.
 	 */
-	virtual void quotient(ParityGame& g) = 0;
-	/// \brief Annotations for the vertices in the parity game that is being
-	///   partitioned.
-	std::vector<VertexInfo> m_vertices;
-	BlockList m_blocks; ///< The list of blocks in the partition.
+	virtual void quotient(graph_t& quotient) = 0;
+
+	blocklist_t m_blocks;
+	graph_t& m_pg;
 };
 
-}
+} // namespace graph
 
 #endif // __PARTITIONER_H

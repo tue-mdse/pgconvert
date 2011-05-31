@@ -1,39 +1,50 @@
 #ifndef __PG_H
 #define __PG_H
 
-#include "detail/pg.h"
+#include "graph.h"
 #include <iostream>
 
+namespace graph {
 namespace pg {
 
 /**
- * @class ParityGame
- * @brief Class representing a parity game.
+ * @brief Enumerated constants to indicate parity game players.
  */
-class ParityGame : public detail::ParityGame
+enum Player
 {
-public:
-	/**
-	 * @brief Load the parity game from a stream.
-	 *
-	 * Currently, only the PGSolver format is supported.
-	 * @param s The stream from which to load the game.
-	 */
-	void load(std::istream& s);
-	/**
-	 * @brief Dump the parity game to a stream in PGSolver format.
-	 * @param s The stream to which to dump the game.
-	 */
-	void dump(std::ostream& s);
-	/**
-	 * @brief Collapse strongly connected components to single states.
-	 *
-	 * Only strongly connected components in which each state has the same player and priority
-	 * are collapsed.
-	 */
-	void collapse_sccs();
+	even,///< even
+	odd  ///< odd
 };
 
+typedef size_t Priority; ///< Type of vertex priorities.
+
+/**
+ * @brief Struct
+typedef size_t VertexIndex;
+typedef std::set<VertexIndex> VertexSet; ///< Type used to store adjacency lists.ure containing a node label.
+ *
+ * This class is provided to make it easier to adapt parity game reduction algorithms
+ * to work with Kripke structures too.
+ */
+struct Label
+{
+	Priority prio; ///< The vertex priority
+	Player player; ///< The owner of the vertex
+	/// @brief Comparison to make Label a valid mapping index.
+	bool operator<(const Label& other) const { return (prio < other.prio) or (prio == other.prio and player < other.player); }
+	/// @brief Equality comparison.
+	bool operator==(const Label& other) const { return (prio == other.prio) and (player == other.player); }
+};
+
+enum FileFormat
+{
+	pgsolver
+};
+
+template <typename Vertex, FileFormat format>
+class Parser {};
+
 } // namespace pg
+} // namespace graph
 
 #endif // __PG_H
