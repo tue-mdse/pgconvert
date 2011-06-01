@@ -1,4 +1,6 @@
 #include "pg.h"
+#include "graph.h"
+
 #include <limits>
 #include <stdexcept>
 #include <sstream>

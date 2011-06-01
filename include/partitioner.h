@@ -1,6 +1,7 @@
 #ifndef __PARTITIONER_H
 #define __PARTITIONER_H
 
+#include "graph.h"
 #include "vertex.h"
 #include "pg.h"
 #include <auto_ptr.h>

@@ -5,6 +5,9 @@
 #include <list>
 #include <vector>
 
+// TODO: remove
+#include <iostream>
+
 namespace graph {
 namespace impl {
 
@@ -39,7 +42,7 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 				sccstack.push_back(vi);
 				for (graph::VertexSet::iterator w = v.out.begin(); w != v.out.end(); ++w)
 				{
-					if (low[*w] == 0 and scc[*w] == 0 and vertices[*w].label == v.label)
+					if ((low[*w] == 0) and (scc[*w] == 0) and (vertices[*w].label == v.label))
 						stack.push_front(*w);
 				}
 			}
@@ -47,7 +50,7 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 			{
 				for (graph::VertexSet::iterator w = v.out.begin(); w != v.out.end(); ++w)
 				{
-					if (low[*w] != 0 and vertices[*w].label == v.label)
+					if ((low[*w] != 0) and (vertices[*w].label == v.label))
 						low[vi] = low[vi] < low[*w] ? low[vi] : low[*w];
 				}
 				if (low[vi] == scc[vi])
@@ -61,7 +64,7 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 						scc[tos] = scc_id;
 						sccstack.pop_back();
 					}
-					while (not sccstack.empty());
+					while (tos != vi);
 				}
 				stack.pop_front();
 			}

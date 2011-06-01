@@ -1,8 +1,8 @@
 #include "equivalence.h"
-#include "pg.h"
 #include "parsers/pgsolver.h"
 #include "govstut.h"
 #include "stut.h"
+#include "pg.h"
 
 #include "mcrl2/utilities/input_output_tool.h"
 #include "mcrl2/utilities/logger.h"
@@ -51,7 +51,9 @@ public:
 		partitioner.partition(output);
 		timer().finish("partition refinement");
 		if (output)
+		{
 			mCRL2log(debug) << "Parity game contains " << output->size() << " nodes after " << e.desc() << " reduction." << std::endl;
+		}
 	}
 
 	template <typename graph_t>
@@ -122,14 +124,17 @@ public:
 		}
 		else if (m_equivalence == Equivalence::stut)
 		{
-			graph::StutteringPartitioner<graph::pg::Label>::graph_t pg;
-			graph::StutteringPartitioner<graph::pg::Label>::graph_t output;
-			graph::StutteringPartitioner<graph::pg::Label> p(pg);
+			graph::StutteringPartitioner<graph::pg::DivLabel>::graph_t pg;
+			graph::StutteringPartitioner<graph::pg::DivLabel>::graph_t output;
+			graph::StutteringPartitioner<graph::pg::DivLabel> p(pg);
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
 			partition(m_equivalence, p, &output);
 			timer().finish("reduction");
+			for (size_t i = 0; i < output.size(); ++i)
+				if (output.vertex(i).label.div)
+					output.vertex(i).out.insert(i);
 			save(output, outstream);
 		}
 		else if (m_equivalence == Equivalence::gstut)
