@@ -124,6 +124,7 @@ protected:
 	 */
 	bool split(const block_t* B1, const block_t* B2, VertexList& pos)
 	{
+		pos.clear();
 		if (B1 == B2) return false;
 		VertexList todo;
 		for (VertexList::const_iterator v = B1->bottom.begin(); v != B1->bottom.end(); ++v)
@@ -147,6 +148,8 @@ protected:
 					todo.push_back(*pred);
 			todo.pop_front();
 		}
+		for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
+			m_pg.vertex(*v).clear();
 		return true;
 	}
 	/**

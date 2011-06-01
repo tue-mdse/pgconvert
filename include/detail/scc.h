@@ -17,7 +17,8 @@ namespace impl {
 template <typename Vertex>
 void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& scc)
 {
-	size_t unused = 1, lastscc = 0;
+	size_t debug =0;
+	size_t unused = 1, lastscc = 1;
 	std::vector<size_t> low;
 	std::list<size_t> stack;
 	std::list<size_t> sccstack;
@@ -25,16 +26,17 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 	for (size_t i = 0; i < vertices.size(); ++i)
 	{
 		if (scc[i] == 0)
-			stack.push_back(i);
+			stack.push_front(i);
 		while (not stack.empty())
 		{
 			size_t vi = stack.front();
 			Vertex& v = vertices[vi];
 
-			if (low[vi] == 0)
+			if (low[vi] == 0 and scc[vi] == 0)
 			{
 				scc[vi] = unused;
 				low[vi] = unused++;
+				sccstack.push_back(vi);
 				for (graph::VertexSet::iterator w = v.out.begin(); w != v.out.end(); ++w)
 				{
 					if (low[*w] == 0 and scc[*w] == 0 and vertices[*w].label == v.label)
@@ -51,18 +53,16 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 				if (low[vi] == scc[vi])
 				{
 					size_t tos, scc_id = lastscc++;
-					sccstack.push_back(vi);
 					do
 					{
-						tos = sccstack.front();
+						++debug;
+						tos = sccstack.back();
 						low[tos] = 0;
 						scc[tos] = scc_id;
-						sccstack.pop_front();
+						sccstack.pop_back();
 					}
 					while (not sccstack.empty());
 				}
-				else
-					sccstack.push_back(stack.front());
 				stack.pop_front();
 			}
 		}
@@ -73,7 +73,10 @@ template <typename Vertex>
 void collapse(std::vector<Vertex>& vertices, std::vector<VertexIndex>& sccs)
 {
 	graph::VertexSet temp;
-	for (size_t i = 0; i < sccs.size(); ++i)
+	// Replace incoming/outgoing node indices by corresponding scc indices.
+	for (size_t i = 0; i < vertices.size(); ++i)
+		--sccs[i];
+	for (size_t i = 0; i < vertices.size(); ++i)
 	{
 		temp.clear();
 		for (graph::VertexSet::iterator v = vertices[i].out.begin(); v != vertices[i].out.end(); ++v)
@@ -84,16 +87,19 @@ void collapse(std::vector<Vertex>& vertices, std::vector<VertexIndex>& sccs)
 			temp.insert(sccs[*v]);
 		vertices[i].in.swap(temp);
 	}
+	// Move scc representatives to scc indices, copy incoming/outgoing from
+	// other scc members to the scc representative.
+	size_t scc;
 	for (size_t i = 0; i < sccs.size(); ++i)
 	{
-		size_t scc = sccs[i];
+		scc = sccs[i];
 		while (sccs[scc] != scc)
 		{
 			Vertex temp = vertices[i];
-			sccs[i] = sccs[scc];
-			sccs[scc] = scc;
 			vertices[i] = vertices[scc];
 			vertices[scc] = temp;
+			sccs[i] = sccs[scc];
+			sccs[scc] = scc;
 			scc = sccs[i];
 		}
 		if (i != scc)

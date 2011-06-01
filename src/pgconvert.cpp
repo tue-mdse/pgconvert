@@ -41,23 +41,28 @@ public:
 		timer().start("scc reduction");
 		graph.collapse_sccs();
 		timer().finish("scc reduction");
+		mCRL2log(debug) << "Parity game contains " << graph.size() << " nodes after SCC reduction." << std::endl;
 	}
 
 	template <typename partitioner_t, typename graph_t>
-	void partition(partitioner_t& partitioner, graph_t* output=NULL)
+	void partition(Equivalence e, partitioner_t& partitioner, graph_t* output=NULL)
 	{
 		timer().start("partition refinement");
 		partitioner.partition(output);
 		timer().finish("partition refinement");
+		if (output)
+			mCRL2log(debug) << "Parity game contains " << output->size() << " nodes after " << e.desc() << " reduction." << std::endl;
 	}
 
 	template <typename graph_t>
 	void load(graph_t& graph, std::istream& s)
 	{
+		mCRL2log(info) << "Loading parity game." << std::endl;
 		timer().start("load");
 		graph::pg::Parser<typename graph_t::vertex_t, graph::pg::pgsolver> parser(graph);
 		parser.load(s);
 		timer().finish("load");
+		mCRL2log(debug) << "Parity game contains " << graph.size() << " nodes." << std::endl;
 	}
 
 	template <typename graph_t>
@@ -109,7 +114,6 @@ public:
 		if (m_equivalence == Equivalence::scc)
 		{
 			graph::KripkeStructure<graph::Vertex<graph::pg::Label> > pg;
-			mCRL2log(info) << "Loading parity game." << std::endl;
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
@@ -121,11 +125,10 @@ public:
 			graph::StutteringPartitioner<graph::pg::Label>::graph_t pg;
 			graph::StutteringPartitioner<graph::pg::Label>::graph_t output;
 			graph::StutteringPartitioner<graph::pg::Label> p(pg);
-			mCRL2log(info) << "Loading parity game." << std::endl;
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
-			partition(p, &output);
+			partition(m_equivalence, p, &output);
 			timer().finish("reduction");
 			save(output, outstream);
 		}
@@ -135,7 +138,7 @@ public:
 			graph::pg::GovernedStutteringTraits::graph_t output;
 			graph::pg::GovernedStutteringPartitioner p(pg);
 			load(pg, instream);
-			partition(p, &output);
+			partition(m_equivalence, p, &output);
 			save(output, outstream);
 		}
 		return true;
@@ -173,5 +176,5 @@ protected:
 
 int main(int argc, char** argv)
 {
-	return pgconvert().execute(argc, argv);
+	return std::auto_ptr<pgconvert>(new pgconvert())->execute(argc, argv);
 }

@@ -40,7 +40,7 @@ public:
 		unsigned visitbit : 1; ///< Tag used by the partition refinement algorithms.
 		void visit() { visitbit = true; }
 		void clear() { visitbit = false; }
-		bool visited() { return visitbit; }
+		bool visited() const { return visitbit; }
 	};
 
 	/**
@@ -93,7 +93,7 @@ public:
 	void partition(graph_t* quotient=NULL)
 	{
 		bool found_splitter = true;
-		block_t* B1;
+		block_t* B1 = NULL;
 		VertexList pos;
 		create_initial_partition();
 		while (found_splitter)
@@ -191,7 +191,7 @@ protected:
 		block_t& C = m_blocks.back();
 		while (not s.empty())
 		{
-			size_t v = s.front();\
+			size_t v = s.front();
 			C.vertices.push_back(v);
 			B.vertices.remove(v);
 			m_pg.vertex(v).block = &C;
