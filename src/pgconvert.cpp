@@ -155,14 +155,15 @@ public:
 			{
 			  if (output.vertex(i).label.div)
 			  {
-			    for (size_t j = 0; j < output.size(); ++j)
+          div = i;
+			    graph_t::vertex_t& v = output.vertex(div);
+			    for (graph::VertexSet::iterator j = v.in.begin(); j != v.in.end(); ++j)
 			    {
-			      output.vertex(j).out.remove(i);
-			      output.vertex(j).out.insert(j);
-            output.vertex(j).in.insert(j);
+			      output.vertex(*j).out.erase(i);
+			      output.vertex(*j).out.insert(*j);
+            output.vertex(*j).in.insert(*j);
 			    }
 			    output.vertex(i).in.clear();
-			    div = i;
 			  }
 			}
 			for (size_t i = 0; i < output.size(); ++i)
@@ -171,9 +172,11 @@ public:
 			  for (graph::VertexSet::iterator it = output.vertex(i).in.begin(); it != output.vertex(i).in.end(); ++it)
 			    in.insert(*it - (*it > div ? 1 : 0));
         for (graph::VertexSet::iterator it = output.vertex(i).out.begin(); it != output.vertex(i).out.end(); ++it)
-          in.insert(*it - (*it > div ? 1 : 0));
+          out.insert(*it - (*it > div ? 1 : 0));
 			  output.vertex(i).in.swap(in);
 			  output.vertex(i).out.swap(out);
+			  if (i > div)
+			    output.vertex(i - 1) = output.vertex(i);
 			}
 			output.resize(output.size() - 1);
 			timer().finish("reduction");
