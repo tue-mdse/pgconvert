@@ -137,7 +137,6 @@ public:
 			pg.resize(pg.size()+1);
 			graph_t::vertex_t& divmark = pg.vertex(pg.size()-1);
 			divmark.label.div = true;
-			divmark.label.prio = 100;
 			divmark.in.insert(pg.size()-1);
 			divmark.out.insert(pg.size()-1);
 			for (size_t i = 0; i < pg.size() -1; ++i)
@@ -150,8 +149,33 @@ public:
 					v.label.div = false;
 				}
 			}
-			//save(pg, outstream);
 			partition(m_equivalence, p, &output);
+			size_t div = 0;
+			for (size_t i = 0; i < output.size(); ++i)
+			{
+			  if (output.vertex(i).label.div)
+			  {
+			    for (size_t j = 0; j < output.size(); ++j)
+			    {
+			      output.vertex(j).out.remove(i);
+			      output.vertex(j).out.insert(j);
+            output.vertex(j).in.insert(j);
+			    }
+			    output.vertex(i).in.clear();
+			    div = i;
+			  }
+			}
+			for (size_t i = 0; i < output.size(); ++i)
+			{
+			  graph::VertexSet in, out;
+			  for (graph::VertexSet::iterator it = output.vertex(i).in.begin(); it != output.vertex(i).in.end(); ++it)
+			    in.insert(*it - (*it > div ? 1 : 0));
+        for (graph::VertexSet::iterator it = output.vertex(i).out.begin(); it != output.vertex(i).out.end(); ++it)
+          in.insert(*it - (*it > div ? 1 : 0));
+			  output.vertex(i).in.swap(in);
+			  output.vertex(i).out.swap(out);
+			}
+			output.resize(output.size() - 1);
 			timer().finish("reduction");
 			save(output, outstream);
 		}
