@@ -2,6 +2,7 @@
 #define __PG_H
 
 #include "vertex.h"
+#include "parsers/dot.h"
 #include <iostream>
 
 namespace graph {
@@ -72,13 +73,17 @@ struct DivLabel
 	}
 };
 
-enum FileFormat
+template <typename Vertex>
+class VertexFormatter : public graph::Parser<Vertex, graph::dot>::VertexFormatter
 {
-	pgsolver
+public:
+  typedef Vertex vertex_t;
+  void format(std::ostream& s, size_t index, const vertex_t& vertex)
+  {
+    s << "shape=\"" << (vertex.label.player == odd ? "box" : "diamond") << "\", ";
+    s << "label=\"" << vertex.label.prio << "\"";
+  }
 };
-
-template <typename Vertex, FileFormat format>
-class Parser {};
 
 } // namespace pg
 

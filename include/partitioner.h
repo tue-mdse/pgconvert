@@ -1,12 +1,16 @@
 #ifndef __PARTITIONER_H
 #define __PARTITIONER_H
 
+#include "mcrl2/utilities/logger.h"
 #include "graph.h"
 #include "vertex.h"
 #include "pg.h"
 #include <auto_ptr.h>
 #include <list>
 #include <vector>
+
+#include "stdlib.h"
+#include <algorithm>
 
 namespace graph {
 
@@ -101,26 +105,28 @@ public:
 		{
 			found_splitter = false;
 			// Try to find a splitter for an unstable block
+			mCRL2log(debug, "partitioner") << "Find splitter" << std::endl;
 			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); ++B2)
 			{
 				if (not B2->stable and B2->vertices.size() > 1)
 				{
 					B1 = &(*B2);
-					found_splitter = split(B1, &(*B2), pos);
+					found_splitter = split(B1, pos);
 				}
 			}
-			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); B2->stable = true, ++B2)
+			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); B2->stable = not found_splitter, ++B2)
 			{
 				if (B2->stable)
 				{
+				  mCRL2log(debug, "partitioner") << "Skipping stable block." << std::endl;
 					continue;
 				}
 				std::list<block_t*> adjacent;
-				for (typename EdgeList::const_iterator e = B2->incoming.begin(); not found_splitter and e != B2->incoming.end(); ++e)
+				for (typename EdgeList::const_iterator e = B2->incoming.begin(); e != B2->incoming.end(); ++e)
 				{
 					vertex_t& v = m_pg.vertex(e->src);
 					v.visit();
-					if (not v.block->visited and (v.block != &(*B2)) and (v.block->vertices.size() > 1))
+					if ((not v.block->visited) and (v.block != &(*B2)))
 					{
 						adjacent.push_back(v.block);
 						v.block->visited = true;
@@ -128,10 +134,12 @@ public:
 				}
 				while (not adjacent.empty())
 				{
-					B1 = adjacent.front();
-					B1->visited = false;
+					adjacent.front()->visited = false;
 					if (not found_splitter)
+					{
+					  B1 = adjacent.front();
 						found_splitter = split(B1, &(*B2), pos);
+					}
 					adjacent.pop_front();
 				}
 				for (typename EdgeList::const_iterator e = B2->incoming.begin(); not found_splitter and e != B2->incoming.end(); ++e)
@@ -139,11 +147,14 @@ public:
 			}
 			if (found_splitter)
 			{
-				if (refine(*B1, pos))
-					for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
+			  mCRL2log(debug, "partitioner") << "Split." << std::endl;
+			  if (refine(*B1, pos))
+				{
+				  for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
 					{
 						B->stable = false;
 					}
+				}
 			}
 		}
 		if (quotient)
@@ -187,19 +198,24 @@ protected:
 	 *   @c false otherwise.
 	 */
 	bool refine(block_t& B, VertexList& s)
-	{	// m_split contains a subset of B
+	{
+		// m_split contains a subset of B
 		m_blocks.push_back(block_t(m_pg, m_blocks.size()));
 		block_t& C = m_blocks.back();
+		VertexList::iterator it = B.vertices.begin();
 		while (not s.empty())
 		{
 			size_t v = s.front();
+			while (v != *it)
+			  ++it;
 			C.vertices.push_back(v);
-			B.vertices.remove(v);
+			it = B.vertices.erase(it);
 			m_pg.vertex(v).block = &C;
 			s.pop_front();
 		}
 		bool result = B.update(&C);
-		result = C.update(&B) or result;
+		if (C.update(&B))
+			return true;
 		return result;
 	}
 
@@ -224,6 +240,7 @@ protected:
 	 *   reach @a B2.
 	 */
 	virtual bool split(const block_t* B1, const block_t* B2, VertexList& pos) = 0;
+  virtual bool split(const block_t* B1, VertexList& pos) = 0;
 	/**
 	 * @brief Writes the quotient induced by the current partition to @a g.
 	 * @pre m_vertices represents the coarsest partition that the partition()

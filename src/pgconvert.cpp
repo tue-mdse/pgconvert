@@ -1,5 +1,6 @@
 #include "equivalence.h"
 #include "parsers/pgsolver.h"
+#include "parsers/dot.h"
 #include "govstut.h"
 #include "stut.h"
 #include "pg.h"
@@ -61,7 +62,7 @@ public:
 	{
 		mCRL2log(info) << "Loading parity game." << std::endl;
 		timer().start("load");
-		graph::pg::Parser<typename graph_t::vertex_t, graph::pg::pgsolver> parser(graph);
+		graph::Parser<typename graph_t::vertex_t, graph::pgsolver> parser(graph);
 		parser.load(s);
 		timer().finish("load");
 		mCRL2log(debug) << "Parity game contains " << graph.size() << " nodes." << std::endl;
@@ -71,8 +72,9 @@ public:
 	void save(graph_t& graph, std::ostream& s)
 	{
 		timer().start("save");
-		graph::pg::Parser<typename graph_t::vertex_t, graph::pg::pgsolver> parser(graph);
+		graph::Parser<typename graph_t::vertex_t, graph::pgsolver> parser(graph);
 		parser.dump(s);
+		s << std::flush;
 		timer().finish("save");
 	}
 
@@ -115,7 +117,8 @@ public:
 		mCRL2log(info) << "Performing " << m_equivalence.desc() << " reduction." << std::endl;
 		if (m_equivalence == Equivalence::scc)
 		{
-			graph::KripkeStructure<graph::Vertex<graph::pg::Label> > pg;
+      typedef graph::KripkeStructure<graph::Vertex<graph::pg::Label> > graph_t;
+			graph_t pg;
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
@@ -124,17 +127,32 @@ public:
 		}
 		else if (m_equivalence == Equivalence::stut)
 		{
-			graph::StutteringPartitioner<graph::pg::DivLabel>::graph_t pg;
-			graph::StutteringPartitioner<graph::pg::DivLabel>::graph_t output;
+			typedef graph::StutteringPartitioner<graph::pg::DivLabel>::graph_t graph_t;
+			graph_t pg;
+			graph_t output;
 			graph::StutteringPartitioner<graph::pg::DivLabel> p(pg);
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
+			pg.resize(pg.size()+1);
+			graph_t::vertex_t& divmark = pg.vertex(pg.size()-1);
+			divmark.label.div = true;
+			divmark.label.prio = 100;
+			divmark.in.insert(pg.size()-1);
+			divmark.out.insert(pg.size()-1);
+			for (size_t i = 0; i < pg.size() -1; ++i)
+			{
+				graph_t::vertex_t& v = pg.vertex(i);
+				if (v.label.div)
+				{
+					v.out.insert(pg.size()-1);
+					divmark.in.insert(i);
+					v.label.div = false;
+				}
+			}
+			//save(pg, outstream);
 			partition(m_equivalence, p, &output);
 			timer().finish("reduction");
-			for (size_t i = 0; i < output.size(); ++i)
-				if (output.vertex(i).label.div)
-					output.vertex(i).out.insert(i);
 			save(output, outstream);
 		}
 		else if (m_equivalence == Equivalence::gstut)
@@ -143,7 +161,9 @@ public:
 			graph::pg::GovernedStutteringTraits::graph_t output;
 			graph::pg::GovernedStutteringPartitioner p(pg);
 			load(pg, instream);
+			timer().start("reduction");
 			partition(m_equivalence, p, &output);
+      timer().finish("reduction");
 			save(output, outstream);
 		}
 		return true;
@@ -176,6 +196,8 @@ protected:
 							 parser.option_argument("equivalence") + "'");
 			}
 		}
+		else
+		  parser.error("please specify an conversion method using the -e option.");
 	}
 };
 

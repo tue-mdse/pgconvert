@@ -21,30 +21,24 @@ public:
 		block_t(graph_t& pg, size_t index) : PartitionerTraits::block_t(index), pg(pg) {}
 		bool update(PartitionerTraits::block_t* has_edge_from=NULL)
 		{
-			block_t* srcblock = NULL;
-			block_t* dstblock = NULL;
 			bool result = false;
 			incoming.clear();
 			bottom.clear();
 			for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i)
 			{
 				vertex_t& v = pg.vertex(*i);
-				dstblock = v.block;
 				for (VertexSet::const_iterator src = v.in.begin(); src != v.in.end(); ++src)
 				{
-					srcblock = pg.vertex(*src).block;
-					if (srcblock != dstblock)
+					if (pg.vertex(*src).block != this)
 					{
 						incoming.push_back(Edge(*src, *i));
-						result = result or (srcblock == has_edge_from);
+						result = result or (pg.vertex(*src).block == has_edge_from);
 					}
 				}
-				srcblock = dstblock;
 				bool is_bottom = true;
 				for (VertexSet::const_iterator dst = v.out.begin(); dst != v.out.end(); ++dst)
 				{
-					dstblock = pg.vertex(*dst).block;
-					if (srcblock == dstblock)
+					if (this == pg.vertex(*dst).block)
 					{
 						is_bottom = false;
 						break;
@@ -110,6 +104,11 @@ protected:
 			B->update();
 		}
 	}
+
+	bool split(const block_t* B, VertexList& pos)
+	{
+	  return false;
+	}
 	/**
 	 * @brief Attempts to split @a B1 using @a B2
 	 *
@@ -124,32 +123,43 @@ protected:
 	 */
 	bool split(const block_t* B1, const block_t* B2, VertexList& pos)
 	{
-		pos.clear();
-		if (B1 == B2) return false;
-		VertexList todo;
+		bool all_bottoms_visited = true;
 		for (VertexList::const_iterator v = B1->bottom.begin(); v != B1->bottom.end(); ++v)
+		{
+			all_bottoms_visited = all_bottoms_visited and m_pg.vertex(*v).visited();
+		}
+		if (all_bottoms_visited)
+		{
+			return false;
+		}
+
+		VertexList todo;
+    pos.clear();
+		for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
 		{
 			if (m_pg.vertex(*v).visited())
 				todo.push_back(*v);
-			m_pg.vertex(*v).visit();
-		}
-		if (todo.size() == B1->bottom.size())
-		{
-			return false;
 		}
 		while (not todo.empty())
 		{
 			size_t vi = todo.front();
 			vertex_t& v = m_pg.vertex(vi);
-			v.visit();
 			pos.push_back(vi);
 			for (VertexSet::const_iterator pred = v.in.begin(); pred != v.in.end(); ++pred)
-				if (m_pg.vertex(*pred).block == B1 and not m_pg.vertex(*pred).visited())
+			{
+			  vertex_t& p = m_pg.vertex(*pred);
+				if (p.block == B1 and not p.visited())
+				{
+				  p.visit();
 					todo.push_back(*pred);
+				}
+			}
 			todo.pop_front();
 		}
-		for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
+		for (VertexList::const_iterator v = pos.begin(); v != pos.end(); ++v)
+		{
 			m_pg.vertex(*v).clear();
+		}
 		return true;
 	}
 	/**

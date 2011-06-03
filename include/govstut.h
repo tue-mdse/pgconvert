@@ -14,6 +14,7 @@ public:
 
 	struct vertex_t : public graph::Vertex<graph::pg::Label>
 	{
+	  vertex_t() : visitcounter(0), external(0) {}
 		block_t *block; ///< The block to which @c v belongs.
 		size_t visitcounter; ///< Tag used by the partition refinement algorithms.
 		size_t external;
@@ -89,6 +90,8 @@ private:
 	 * @return @c true if @a B1 was split, @c false otherwise.
 	 */
 	bool split(const block_t* B1, const block_t* B2, VertexList& pos, Player p);
+  bool split(const block_t* B, VertexList& pos);
+  bool split(const block_t* B, VertexList& pos, Player p);
 	/**
 	 * Calculate the attractor set for player @a p of @a todo in @a B. The vertices that
 	 * can reach @a todo are stored in @a result.
@@ -97,7 +100,7 @@ private:
 	 * @param todo The target of the attractor set.
 	 * @param result The list in which to store the attractor set.
 	 */
-	void attractor(const block_t* B, Player p, VertexList& todo, VertexList& result);
+	void attractor(const block_t* B, Player p, VertexList todo, VertexList& result);
 	/**
 	 * Decide whether @a B is divergent for @a p. If player @a p can force the play to
 	 * stay in @a B from any vertex in @a B, then @a B is divergent for @a p.
