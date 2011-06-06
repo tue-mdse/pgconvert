@@ -2,6 +2,15 @@
 #include <map>
 #include <stdexcept>
 
+template <typename l_t>
+void dumplist(const char* s, l_t& l)
+{
+  std::cerr << s;
+  for (typename l_t::iterator it = l.begin(); it != l.end(); ++it)
+    std::cerr << " " << *it;
+  std::cerr << std::endl;
+}
+
 namespace graph
 {
   namespace pg
@@ -14,7 +23,6 @@ namespace graph
       bool result = false;
       incoming.clear();
       bottom.clear();
-      exit.clear();
       // In initial update, set the .external fields right (assume they were initialised to 0)
       if (has_edge_from == NULL)
       {
@@ -31,7 +39,7 @@ namespace graph
         vertex_t& v = pg.vertex(*i);
         for (VertexSet::const_iterator src = v.in.begin(); src != v.in.end(); ++src)
         {
-          if (pg.vertex(*src).block!= this)
+          if (pg.vertex(*src).block != this)
           {
             incoming.push_back(Edge(*src, *i));
             if (pg.vertex(*src).block == has_edge_from)
@@ -41,20 +49,17 @@ namespace graph
             }
           }
         }
-        bool is_bottom = true, is_exit = false;
+        bool is_bottom = true;
         for (VertexSet::const_iterator dst = v.out.begin(); dst != v.out.end(); ++dst)
         {
           if (this == pg.vertex(*dst).block)
+          {
             is_bottom = false;
-          else
-            is_exit = true;
-          if (is_exit and not is_bottom)
             break;
+          }
         }
         if (is_bottom)
           bottom.push_back(*i);
-        else if (v.external)
-          exit.push_back(*i);
       }
       return result;
     }
@@ -74,12 +79,12 @@ namespace graph
         dst = B->index;
         VertexIndex v;
         vertex_t& repr = quotient.vertex(dst);
-        if (not B->bottom.empty())
-          v = B->bottom.front();
-        else if (not B->exit.empty())
-          v = B->exit.front();
-        else
-          v = B->vertices.front();
+        for (VertexList::const_iterator it = B->vertices.begin(); it != B->vertices.end(); ++it)
+        {
+          v = *it;
+          if (m_pg.vertex(v).external)
+            break;
+        }
         vertex_t& orig = m_pg.vertex(v);
 
         repr.label.player = orig.label.player;
@@ -100,80 +105,51 @@ namespace graph
       }
     }
 
-    void
-    GovernedStutteringPartitioner::attractor(const block_t* B, Player p,
-        VertexList todo, VertexList& result)
+    size_t
+    GovernedStutteringPartitioner::attractor(const block_t* B, Player p, VertexList& todo)
     {
-      result.clear();
-      // Reset visit counters and visit bits for B
-      size_t N = todo.size();
-      for (size_t i = 0; i < N; ++i)
-      {
-        vertex_t& v = m_pg.vertex(todo.front());
-        v.div &= (p == even ? ~2 : ~1);
-        result.push_back(todo.front());
-        for (VertexSet::const_iterator pred = v.in.begin(); pred != v.in.end(); ++pred)
-          todo.push_back(*pred);
-        todo.pop_front();
-      }
+      unsigned char opponent_bm = (p == even ? 2 : 1);
+      size_t result = 0;
+
+      for (VertexList::const_iterator it = todo.begin(); it != todo.end(); ++it)
+        m_pg.vertex(*it).pos = true;
 
       while (not todo.empty())
       {
-        size_t vi = todo.front();
-        vertex_t& v = m_pg.vertex(vi);
+        size_t i = todo.front();
+        vertex_t& v = m_pg.vertex(i);
+        todo.pop_front();
 
-        if (v.block == B)
+        v.div &= ~opponent_bm;
+        ++result;
+
+        for (VertexSet::const_iterator pred = v.in.begin(); pred != v.in.end(); ++pred)
         {
-          if (v.label.player != p)
+          vertex_t& w = m_pg.vertex(*pred);
+          if (w.block == B and not w.pos)
           {
-            v.visit();
-            if (v.visitcounter == v.out.size())
+            w.visit();
+            if (w.visitcounter == w.out.size() or (w.label.player == p and w.visited()))
             {
-              v.div &= (p == even ? ~2 : ~1);
-              result.push_back(vi);
-            }
-          }
-          else
-          {
-            if (not v.visited())
-            {
-              v.div &= (p == even ? ~2 : ~1);
-              result.push_back(vi);
-            }
-          }
-
-          if (not v.visited())
-          {
-            v.visit();
-            for (VertexSet::const_iterator pred = v.in.begin(); pred
-                != v.in.end(); ++pred)
+              w.pos = true;
               todo.push_back(*pred);
+            }
           }
         }
-
-        todo.pop_front();
       }
-
-      for (VertexList::const_iterator vi = B->vertices.begin(); vi
-          != B->vertices.end(); ++vi)
-        m_pg.vertex(*vi).clear();
+      for (VertexList::const_iterator it = B->vertices.begin(); it != B->vertices.end(); ++it)
+        m_pg.vertex(*it).clear();
+      return result;
     }
-
-#define __switch_list(s, end, begin, end2) \
-  if (s == end) \
-  { \
-    s = begin; \
-    if (begin == end2) break; \
-  }
 
     bool
     GovernedStutteringPartitioner::divergent(const block_t* B, Player p)
     {
-      for (VertexList::const_iterator src = B->bottom.begin(); src
-          != B->exit.end(); ++src)
+      for (VertexList::const_iterator src = B->vertices.begin(); src != B->vertices.end(); ++src)
       {
-        __switch_list(src, B->bottom.end(), B->exit.begin(), B->exit.end())
         const vertex_t& v = m_pg.vertex(*src);
+        if (v.external == 0)
+          continue;
         if (v.label.player != p)
           return false;
         bool can_stay_in_block = false;
@@ -187,28 +163,6 @@ namespace graph
           return false;
       }
       return true;
-    }
-
-    bool
-    GovernedStutteringPartitioner::split(const block_t* B1, const block_t* B2,
-        VertexList& pos, Player p)
-    {
-      // Initialise edge list to all edges from B1 to B2
-      VertexList todo;
-
-      for (VertexList::const_iterator vi = B1->bottom.begin(); vi
-          != B1->exit.end(); ++vi)
-      {
-        __switch_list(vi, B1->bottom.end(), B1->exit.begin(), B1->exit.end())
-        vertex_t& v = m_pg.vertex(*vi);
-        if (v.visitcounter == v.out.size() or (v.label.player == p
-            and v.visited()))
-          todo.push_back(*vi);
-      }
-
-      attractor(B1, p, todo, pos);
-
-      return not (pos.empty() or (pos.size() == B1->vertices.size()));
     }
 
     void
@@ -237,49 +191,101 @@ namespace graph
     }
 
     bool
-    GovernedStutteringPartitioner::split(const block_t* B, VertexList& pos,
-        Player p)
+    GovernedStutteringPartitioner::split(const block_t* B, Player p)
     {
-      unsigned char opponent_bm = (p == even ? 2 : 1); // Bitmask for the opponent's divergence indicator.
       VertexList todo;
 
-      for (VertexList::const_iterator vi = B->vertices.begin(); vi
-          != B->vertices.end(); ++vi)
-        m_pg.vertex(*vi).div |= opponent_bm;
-
-      for (VertexList::const_iterator vi = B->bottom.begin(); vi
-          != B->exit.end(); ++vi)
+      for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
       {
-        __switch_list(vi, B->bottom.end(), B->exit.begin(), B->exit.end())
         vertex_t& v = m_pg.vertex(*vi);
         v.visitcounter = v.external;
-        if (v.visitcounter == v.out.size() or (v.label.player == p
-            and v.visited()))
+        if (v.visitcounter == v.out.size() or (v.label.player == p and v.visited()))
           todo.push_back(*vi);
       }
 
-      attractor(B, p, todo, pos);
+      size_t pos_size = attractor(B, p, todo);
 
-      for (VertexList::const_iterator vi = pos.begin(); vi != pos.end(); ++vi)
-        m_pg.vertex(*vi).div &= ~opponent_bm;
-
-      return not (pos.empty() or (pos.size() == B->vertices.size()));
+      if (pos_size == 0 or pos_size == B->vertices.size())
+      {
+        for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
+          m_pg.vertex(*vi).pos = false;
+        return false;
+      }
+      return true;
     }
 
     bool
-    GovernedStutteringPartitioner::split(const block_t* B, VertexList& pos)
+    GovernedStutteringPartitioner::split_players(const block_t* B1, const block_t* B2)
     {
-      if (split(B, pos, even))
+      // Initialise edge list to all edges from B1 to B2
+      VertexList todo;
+      std::vector<size_t> oldcounters;
+      VertexList::const_iterator vi;
+      size_t i, pos_size;
+
+      oldcounters.resize(B1->vertices.size());
+      for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
+      {
+        vertex_t& v = m_pg.vertex(*vi);
+        oldcounters[i] = v.visitcounter;
+        if (v.visitcounter == v.out.size() or (v.label.player == even and v.visited()))
+          todo.push_back(*vi);
+      }
+
+      pos_size = attractor(B1, even, todo);
+
+      if (pos_size != 0 and pos_size != B1->vertices.size())
         return true;
-      return split(B, pos, odd);
+
+      todo.clear();
+      for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
+      {
+        vertex_t& v = m_pg.vertex(*vi);
+        m_pg.vertex(*vi).visitcounter = oldcounters[i];
+        m_pg.vertex(*vi).pos = false;
+        if (v.visitcounter == v.out.size() or (v.label.player == odd and v.visited()))
+          todo.push_back(*vi);
+      }
+
+      pos_size = attractor(B1, odd, todo);
+
+      if (pos_size == 0 or pos_size == B1->vertices.size())
+      {
+        for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
+        {
+          m_pg.vertex(*vi).clear();
+          m_pg.vertex(*vi).pos = false;
+        }
+      }
+      else
+        return true;
+
+      return false;
     }
 
     bool
-    GovernedStutteringPartitioner::split(const block_t* B1, const block_t* B2,
-        VertexList& pos)
+    GovernedStutteringPartitioner::split(const block_t* B)
     {
-      if (B2 == B2)
-        return split(B1, pos);
+      bool result;
+
+      for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
+        m_pg.vertex(*vi).div = 3;
+
+      result = split(B, even);
+      if (not result)
+        result = split(B, odd);
+
+      for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
+        m_pg.vertex(*vi).clear();
+
+      return result;
+    }
+
+    bool
+    GovernedStutteringPartitioner::split(const block_t* B1, const block_t* B2)
+    {
+      if (B1 == B2)
+        return split(B1);
       switch (m_pg.vertex(B1->vertices.front()).div)
       {
         case 3:
@@ -303,32 +309,21 @@ namespace graph
           bool odd_rules = false;
           bool bottom_error = false;
 
-          for (VertexList::const_iterator vi = B1->bottom.begin(); vi
-              != B1->bottom.end() and not (bottom_error or (even_rules
+          for (VertexList::const_iterator vi = B1->vertices.begin(); vi
+              != B1->vertices.end() and not (bottom_error or (even_rules
               and odd_rules)); ++vi)
           {
             vertex_t& v = m_pg.vertex(*vi);
-            bottom_error = not v.visited();
-            if (v.visitcounter != v.out.size())
+            if (v.external)
             {
-              if (v.label.player == odd)
-                odd_rules = true;
-              else
-                even_rules = true;
-            }
-          }
-
-          for (VertexList::const_iterator vi = B1->exit.begin(); vi
-              != B1->exit.end() and not (bottom_error or (even_rules
-              and odd_rules)); ++vi)
-          {
-            vertex_t& v = m_pg.vertex(*vi);
-            if (v.visitcounter != v.out.size())
-            {
-              if (v.label.player == odd)
-                odd_rules = true;
-              else
-                even_rules = true;
+              bottom_error = (v.external == v.out.size() and not v.visited());
+              if (v.visitcounter != v.out.size())
+              {
+                if (v.label.player == odd)
+                  odd_rules = true;
+                else
+                  even_rules = true;
+              }
             }
           }
 
@@ -337,10 +332,8 @@ namespace graph
             return false;
         }
       }
-      return split(B1, B2, pos, even) or split(B1, B2, pos, odd);
+      return split_players(B1, B2);
     }
-
-#undef __switch_list
 
   } // namespace pg
 } // namespace graph

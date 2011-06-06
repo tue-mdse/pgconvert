@@ -42,7 +42,7 @@ public:
 		timer().start("scc reduction");
 		graph.collapse_sccs();
 		timer().finish("scc reduction");
-		mCRL2log(debug) << "Parity game contains " << graph.size() << " nodes after SCC reduction." << std::endl;
+		mCRL2log(verbose) << "Parity game contains " << graph.size() << " nodes after SCC reduction." << std::endl;
 	}
 
 	template <typename partitioner_t, typename graph_t>
@@ -53,19 +53,19 @@ public:
 		timer().finish("partition refinement");
 		if (output)
 		{
-			mCRL2log(debug) << "Parity game contains " << output->size() << " nodes after " << e.desc() << " reduction." << std::endl;
+			mCRL2log(verbose) << "Parity game contains " << output->size() << " nodes after " << e.desc() << " reduction." << std::endl;
 		}
 	}
 
 	template <typename graph_t>
 	void load(graph_t& graph, std::istream& s)
 	{
-		mCRL2log(info) << "Loading parity game." << std::endl;
+		mCRL2log(verbose) << "Loading parity game." << std::endl;
 		timer().start("load");
 		graph::Parser<typename graph_t::vertex_t, graph::pgsolver> parser(graph);
 		parser.load(s);
 		timer().finish("load");
-		mCRL2log(debug) << "Parity game contains " << graph.size() << " nodes." << std::endl;
+		mCRL2log(verbose) << "Parity game contains " << graph.size() << " nodes." << std::endl;
 	}
 
 	template <typename graph_t>
@@ -89,7 +89,7 @@ public:
 		}
 		else
 			m_input_filename = "standard input";
-		mCRL2log(info) << "Reading from " << m_input_filename << "." << std::endl;
+		mCRL2log(verbose) << "Reading from " << m_input_filename << "." << std::endl;
 		return *instream;
 	}
 
@@ -104,7 +104,7 @@ public:
 		}
 		else
 			m_output_filename = "standard output";
-		mCRL2log(info) << "Writing to " << m_output_filename << "." << std::endl;
+		mCRL2log(verbose) << "Writing to " << m_output_filename << "." << std::endl;
 		return *outstream;
 	}
 
@@ -114,7 +114,7 @@ public:
 
 		std::istream& instream = open_input();
 		std::ostream& outstream = open_output();
-		mCRL2log(info) << "Performing " << m_equivalence.desc() << " reduction." << std::endl;
+		mCRL2log(verbose) << "Performing " << m_equivalence.desc() << " reduction." << std::endl;
 		if (m_equivalence == Equivalence::scc)
 		{
       typedef graph::KripkeStructure<graph::Vertex<graph::pg::Label> > graph_t;

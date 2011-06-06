@@ -40,9 +40,10 @@ public:
 	struct vertex_t : public graph::Vertex<Label>
 	{
 	public:
-		vertex_t() : graph::Vertex<Label>(), block(NULL), visitbit(false) {}
+		vertex_t() : graph::Vertex<Label>(), block(NULL), visitbit(false), pos(false) {}
 		Block *block; ///< The block to which @c v belongs.
-		unsigned visitbit : 1; ///< Tag used by the partition refinement algorithms.
+		unsigned char visitbit : 1; ///< Tag used by the partition refinement algorithms.
+    unsigned char pos : 1;
 		void visit() { visitbit = true; }
 		void clear() { visitbit = false; }
 		bool visited() const { return visitbit; }
@@ -99,28 +100,37 @@ public:
 	{
 		bool found_splitter = true;
 		block_t* B1 = NULL;
-		VertexList pos;
+		typename blocklist_t::iterator B2;
 		create_initial_partition();
+		mCRL2log(verbose, "partitioner") << "Created " << m_blocks.size() << " initial blocks.\n";
 		while (found_splitter)
 		{
 			found_splitter = false;
 			// Try to find a splitter for an unstable block
-			mCRL2log(debug, "partitioner") << "Find splitter" << std::endl;
-			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); ++B2)
-			{
-				if (not B2->stable and B2->vertices.size() > 1)
-				{
-					B1 = &(*B2);
-					found_splitter = split(B1, pos);
-				}
-			}
-			for (typename blocklist_t::iterator B2 = m_blocks.begin(); not found_splitter and B2 != m_blocks.end(); B2->stable = not found_splitter, ++B2)
+			B2 = m_blocks.begin();
+			while (not found_splitter and B2 != m_blocks.end())
 			{
 				if (B2->stable)
 				{
-				  mCRL2log(debug, "partitioner") << "Skipping stable block." << std::endl;
-					continue;
-				}
+				  ++B2;
+				  continue;
+			  }
+        B1 = &(*B2);
+        if (split(B1))
+          found_splitter = true;
+        else
+          ++B2;
+      }
+
+      if (not found_splitter)
+        B2 = m_blocks.begin();
+			while (not found_splitter and (B2 != m_blocks.end()))
+			{
+			  if (B2->stable)
+        {
+          ++B2;
+          continue;
+        }
 				std::list<block_t*> adjacent;
 				for (typename EdgeList::const_iterator e = B2->incoming.begin(); e != B2->incoming.end(); ++e)
 				{
@@ -138,17 +148,19 @@ public:
 					if (not found_splitter)
 					{
 					  B1 = adjacent.front();
-						found_splitter = split(B1, &(*B2), pos);
+						found_splitter = split(B1, &(*B2));
 					}
 					adjacent.pop_front();
 				}
-				for (typename EdgeList::const_iterator e = B2->incoming.begin(); not found_splitter and e != B2->incoming.end(); ++e)
-					m_pg.vertex(e->src).clear();
+				for (typename EdgeList::const_iterator e = B2->incoming.begin(); e != B2->incoming.end(); ++e)
+          m_pg.vertex(e->src).clear();
+				if (not found_splitter)
+				  B2++->stable = true;
 			}
+
 			if (found_splitter)
 			{
-			  mCRL2log(debug, "partitioner") << "Split." << std::endl;
-			  if (refine(*B1, pos))
+			  if (refine(*B1))
 				{
 				  for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
 					{
@@ -197,22 +209,29 @@ protected:
 	 * @return @c true if an inert edge in @a B became non-inert by splitting the Block,
 	 *   @c false otherwise.
 	 */
-	bool refine(block_t& B, VertexList& s)
+	bool refine(block_t& B)
 	{
 		// m_split contains a subset of B
-		m_blocks.push_back(block_t(m_pg, m_blocks.size()));
+    m_blocks.push_back(block_t(m_pg, m_blocks.size()));
 		block_t& C = m_blocks.back();
 		VertexList::iterator it = B.vertices.begin();
-		while (not s.empty())
+		while (it != B.vertices.end())
 		{
-			size_t v = s.front();
-			while (v != *it)
-			  ++it;
-			C.vertices.push_back(v);
-			it = B.vertices.erase(it);
-			m_pg.vertex(v).block = &C;
-			s.pop_front();
+		  vertex_t& v = m_pg.vertex(*it);
+		  if (v.pos)
+		  {
+		    C.vertices.push_back(*it);
+		    v.block = &C;
+	      v.pos = false;
+		    it = B.vertices.erase(it);
+		  }
+		  else
+		    ++it;
 		}
+
+		mCRL2log(debug, "partitioner") << "Created block #" << m_blocks.size() + 1 << ": " << C.vertices.size()
+		                               << " nodes (left "<< B.vertices.size() << ").\n";
+
 		bool result = B.update(&C);
 		if (C.update(&B))
 			return true;
@@ -239,8 +258,8 @@ protected:
 	 * @post If @a B2 splits @a B1, then @a pos contains those vertices in @a B1 that can
 	 *   reach @a B2.
 	 */
-	virtual bool split(const block_t* B1, const block_t* B2, VertexList& pos) = 0;
-  virtual bool split(const block_t* B1, VertexList& pos) = 0;
+	virtual bool split(const block_t* B1, const block_t* B2) = 0;
+  virtual bool split(const block_t* B1) = 0;
 	/**
 	 * @brief Writes the quotient induced by the current partition to @a g.
 	 * @pre m_vertices represents the coarsest partition that the partition()

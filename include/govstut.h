@@ -14,11 +14,12 @@ public:
 
 	struct vertex_t : public graph::Vertex<graph::pg::Label>
 	{
-	  vertex_t() : visitcounter(0), external(0) {}
+	  vertex_t() : visitcounter(0), external(0), div(0), pos(false) {}
 		block_t *block; ///< The block to which @c v belongs.
 		size_t visitcounter; ///< Tag used by the partition refinement algorithms.
 		size_t external;
 		unsigned char div : 2;
+    unsigned char pos : 1;
 		void visit() { ++visitcounter; }
 		void clear() { visitcounter = 0; }
 		bool visited() { return visitcounter > 0; }
@@ -33,7 +34,6 @@ public:
 		bool update(graph::PartitionerTraits::block_t* has_edge_from=NULL); ///< Update the @c m_bottom and @c m_incoming members.
 		graph_t& pg; ///< The partition(er) to which the block belongs.
 		vertexlist_t bottom; ///< A list of vertices in the block that have only outgoing edges to other blocks.
-		vertexlist_t exit; ///< A list of vertices in the block that have outgoing edges to other blocks but are not bottom vertices.
 		EdgeList incoming; ///< A list of edges that have a destination in the block.
 	};
 
@@ -69,7 +69,8 @@ protected:
 	 * @param pos The list of vertices that is in the attractor set of @e S.
 	 * @return @c true if @a pos is a non-empty strict subset of @a B1, @c false otherwise.
 	 */
-	bool split(const block_t* B1, const block_t* B2, VertexList& pos);
+	bool split(const block_t* B1, const block_t* B2);
+  bool split(const block_t* B);
 	/**
 	 * @brief Quotients the parity game and stores the result in @a g.
 	 *
@@ -89,9 +90,8 @@ private:
 	 * @param p
 	 * @return @c true if @a B1 was split, @c false otherwise.
 	 */
-	bool split(const block_t* B1, const block_t* B2, VertexList& pos, Player p);
-  bool split(const block_t* B, VertexList& pos);
-  bool split(const block_t* B, VertexList& pos, Player p);
+  bool split(const block_t* B, Player p);
+  bool split_players(const block_t* B1, const block_t* B2);
 	/**
 	 * Calculate the attractor set for player @a p of @a todo in @a B. The vertices that
 	 * can reach @a todo are stored in @a result.
@@ -100,7 +100,7 @@ private:
 	 * @param todo The target of the attractor set.
 	 * @param result The list in which to store the attractor set.
 	 */
-	void attractor(const block_t* B, Player p, VertexList todo, VertexList& result);
+	size_t attractor(const block_t* B, Player p, VertexList& todo);
 	/**
 	 * Decide whether @a B is divergent for @a p. If player @a p can force the play to
 	 * stay in @a B from any vertex in @a B, then @a B is divergent for @a p.

@@ -105,7 +105,7 @@ protected:
 		}
 	}
 
-	bool split(const block_t* B, VertexList& pos)
+	bool split(const block_t* B)
 	{
 	  return false;
 	}
@@ -121,12 +121,12 @@ protected:
 	 * @param pos The list of vertices that is in the attractor set of @e S.
 	 * @return @c true if @a pos is a non-empty strict subset of @a B1, @c false otherwise.
 	 */
-	bool split(const block_t* B1, const block_t* B2, VertexList& pos)
+	bool split(const block_t* B1, const block_t* B2)
 	{
 		bool all_bottoms_visited = true;
-		for (VertexList::const_iterator v = B1->bottom.begin(); v != B1->bottom.end(); ++v)
+		for (VertexList::const_iterator v = B1->bottom.begin(); all_bottoms_visited and v != B1->bottom.end(); ++v)
 		{
-			all_bottoms_visited = all_bottoms_visited and m_pg.vertex(*v).visited();
+		  all_bottoms_visited = all_bottoms_visited and m_pg.vertex(*v).visited();
 		}
 		if (all_bottoms_visited)
 		{
@@ -134,31 +134,28 @@ protected:
 		}
 
 		VertexList todo;
-    pos.clear();
-		for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
+		for (VertexList::const_iterator vi = B1->vertices.begin(); vi != B1->vertices.end(); ++vi)
 		{
-			if (m_pg.vertex(*v).visited())
-				todo.push_back(*v);
+      vertex_t& v = m_pg.vertex(*vi);
+			if (v.visited())
+			{
+			  v.pos = true;
+        todo.push_back(*vi);
+			}
 		}
 		while (not todo.empty())
 		{
-			size_t vi = todo.front();
-			vertex_t& v = m_pg.vertex(vi);
-			pos.push_back(vi);
+			vertex_t& v = m_pg.vertex(todo.front());
+      todo.pop_front();
 			for (VertexSet::const_iterator pred = v.in.begin(); pred != v.in.end(); ++pred)
 			{
 			  vertex_t& p = m_pg.vertex(*pred);
-				if (p.block == B1 and not p.visited())
+				if (p.block == B1 and not p.pos)
 				{
-				  p.visit();
+				  p.pos = true;
 					todo.push_back(*pred);
 				}
 			}
-			todo.pop_front();
-		}
-		for (VertexList::const_iterator v = pos.begin(); v != pos.end(); ++v)
-		{
-			m_pg.vertex(*v).clear();
 		}
 		return true;
 	}
