@@ -11,10 +11,11 @@ public:
 	 * Equivalences that an Equivalence object may represent.
 	 */
 	enum Eq {
-		scc     = 0,//!< SCC decomposition
-		stut    = 1,//!< Stuttering equivalence
-		gstut   = 2,//!< Governed stuttering equivalence
-		invalid = 3 //!< Value indicating invalid equivalence name.
+		scc       = 0,//!< SCC decomposition
+		stut      = 1,//!< Stuttering equivalence
+		gstut     = 2,//!< Governed stuttering equivalence
+		scc_gstut = 3, //<! Governed stuttering equivalence after SCC reduction
+		invalid   = 4 //!< Value indicating invalid equivalence name.
 	};
 	/// @brief Default constructor.
 	Equivalence() {}
@@ -27,10 +28,13 @@ public:
 	 */
 	Equivalence(const std::string& name)
 	{
-		if (m_names[(int)scc] == name) m_value = scc; else
-		if (m_names[(int)stut] == name) m_value = stut; else
-		if (m_names[(int)gstut] == name) m_value = gstut; else
-		m_value = invalid;
+	  m_value = invalid;
+	  for (unsigned char i = 0; i < invalid; ++i)
+	    if (m_names[i] == name)
+	    {
+	      m_value = (Eq)i;
+	      break;
+	    }
 	}
 	/// @brief Returns the (short) name of the equivalence this object represents.
 	const std::string name() const
@@ -63,6 +67,6 @@ public:
 	}
 private:
 	Eq m_value;
-	static const char* m_names[4];
-	static const char* m_descs[4];
+	static const char* m_names[invalid + 1];
+	static const char* m_descs[invalid + 1];
 };

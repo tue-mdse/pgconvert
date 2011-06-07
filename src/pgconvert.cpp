@@ -45,6 +45,60 @@ public:
 		mCRL2log(verbose) << "Parity game contains " << graph.size() << " nodes after SCC reduction." << std::endl;
 	}
 
+	template <typename graph_t>
+	void encode_divergence(graph_t& pg)
+	{
+	  pg.resize(pg.size()+1);
+    typename graph_t::vertex_t& divmark = pg.vertex(pg.size()-1);
+    divmark.label.div = true;
+    divmark.in.insert(pg.size()-1);
+    divmark.out.insert(pg.size()-1);
+    for (size_t i = 0; i < pg.size() -1; ++i)
+    {
+      typename graph_t::vertex_t& v = pg.vertex(i);
+      if (v.label.div)
+      {
+        v.out.insert(pg.size()-1);
+        divmark.in.insert(i);
+        v.label.div = false;
+      }
+    }
+	}
+
+	template <typename graph_t>
+  void decode_divergence(graph_t& pg)
+	{
+	  size_t div = 0;
+    for (size_t i = 0; i < pg.size(); ++i)
+    {
+      if (pg.vertex(i).label.div)
+      {
+        div = i;
+        typename graph_t::vertex_t& v = pg.vertex(div);
+        for (graph::VertexSet::iterator j = v.in.begin(); j != v.in.end(); ++j)
+        {
+          pg.vertex(*j).out.erase(i);
+          pg.vertex(*j).out.insert(*j);
+          pg.vertex(*j).in.insert(*j);
+        }
+        pg.vertex(i).in.clear();
+      }
+    }
+    for (size_t i = 0; i < pg.size(); ++i)
+    {
+      graph::VertexSet in, out;
+      for (graph::VertexSet::iterator it = pg.vertex(i).in.begin(); it != pg.vertex(i).in.end(); ++it)
+        in.insert(*it - (*it > div ? 1 : 0));
+      for (graph::VertexSet::iterator it = pg.vertex(i).out.begin(); it != pg.vertex(i).out.end(); ++it)
+        out.insert(*it - (*it > div ? 1 : 0));
+      pg.vertex(i).in.swap(in);
+      pg.vertex(i).out.swap(out);
+      if (i > div)
+        pg.vertex(i - 1) = pg.vertex(i);
+    }
+    pg.resize(pg.size() - 1);
+	}
+
 	template <typename partitioner_t, typename graph_t>
 	void partition(Equivalence e, partitioner_t& partitioner, graph_t* output=NULL)
 	{
@@ -134,65 +188,39 @@ public:
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
-			pg.resize(pg.size()+1);
-			graph_t::vertex_t& divmark = pg.vertex(pg.size()-1);
-			divmark.label.div = true;
-			divmark.in.insert(pg.size()-1);
-			divmark.out.insert(pg.size()-1);
-			for (size_t i = 0; i < pg.size() -1; ++i)
-			{
-				graph_t::vertex_t& v = pg.vertex(i);
-				if (v.label.div)
-				{
-					v.out.insert(pg.size()-1);
-					divmark.in.insert(i);
-					v.label.div = false;
-				}
-			}
+			encode_divergence(pg);
 			partition(m_equivalence, p, &output);
-			size_t div = 0;
-			for (size_t i = 0; i < output.size(); ++i)
-			{
-			  if (output.vertex(i).label.div)
-			  {
-          div = i;
-			    graph_t::vertex_t& v = output.vertex(div);
-			    for (graph::VertexSet::iterator j = v.in.begin(); j != v.in.end(); ++j)
-			    {
-			      output.vertex(*j).out.erase(i);
-			      output.vertex(*j).out.insert(*j);
-            output.vertex(*j).in.insert(*j);
-			    }
-			    output.vertex(i).in.clear();
-			  }
-			}
-			for (size_t i = 0; i < output.size(); ++i)
-			{
-			  graph::VertexSet in, out;
-			  for (graph::VertexSet::iterator it = output.vertex(i).in.begin(); it != output.vertex(i).in.end(); ++it)
-			    in.insert(*it - (*it > div ? 1 : 0));
-        for (graph::VertexSet::iterator it = output.vertex(i).out.begin(); it != output.vertex(i).out.end(); ++it)
-          out.insert(*it - (*it > div ? 1 : 0));
-			  output.vertex(i).in.swap(in);
-			  output.vertex(i).out.swap(out);
-			  if (i > div)
-			    output.vertex(i - 1) = output.vertex(i);
-			}
-			output.resize(output.size() - 1);
+			decode_divergence(output);
 			timer().finish("reduction");
 			save(output, outstream);
 		}
 		else if (m_equivalence == Equivalence::gstut)
 		{
-			graph::pg::GovernedStutteringTraits::graph_t pg;
-			graph::pg::GovernedStutteringTraits::graph_t output;
-			graph::pg::GovernedStutteringPartitioner p(pg);
+		  typedef graph::pg::GovernedStutteringPartitioner<graph::pg::Label>::graph_t graph_t;
+			graph_t pg;
+			graph_t output;
+			graph::pg::GovernedStutteringPartitioner<graph::pg::Label> p(pg);
 			load(pg, instream);
 			timer().start("reduction");
 			partition(m_equivalence, p, &output);
       timer().finish("reduction");
 			save(output, outstream);
 		}
+    else if (m_equivalence == Equivalence::scc_gstut)
+    {
+      typedef graph::pg::GovernedStutteringPartitioner<graph::pg::DivLabel>::graph_t graph_t;
+      graph_t pg;
+      graph_t output;
+      graph::pg::GovernedStutteringPartitioner<graph::pg::DivLabel> p(pg);
+      load(pg, instream);
+      timer().start("reduction");
+      collapse_sccs(pg);
+      encode_divergence(pg);
+      partition(m_equivalence, p, &output);
+      decode_divergence(output);
+      timer().finish("reduction");
+      save(output, outstream);
+    }
 		return true;
 	}
 protected:

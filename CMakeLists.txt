@@ -10,7 +10,6 @@ add_library (libmcrl2_utilities_command_line UNKNOWN IMPORTED)
 add_executable (pgconvert 
   src/pgconvert.cpp 
   src/equivalence.cpp 
-  src/partitioners/govstut.cpp
 )
 target_link_libraries (pgconvert mcrl2_core mcrl2_aterm mcrl2_utilities_command_line)
 
