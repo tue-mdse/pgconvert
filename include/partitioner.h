@@ -6,32 +6,20 @@
 #include "vertex.h"
 #include "pg.h"
 #include <auto_ptr.h>
+#ifdef __GNU_LIBRARY__
+#include <ext/slist>
+#else
 #include <list>
+#endif
 #include <vector>
-
-#include "stdlib.h"
-#include <algorithm>
 
 namespace graph {
 
-/**
- * @struct Edge
- * @brief Class representing an edge in a graph.
- */
-struct Edge
-{
-	/**
-	 * @brief Constructor.
-	 * @param s The source of the edge.
-	 * @param d The destination of the edge.
-	 */
-	Edge(size_t s, size_t d) : src(s), dst(d) {}
-	size_t src; ///< Index of the source vertex.
-	size_t dst; ///< Index of the destination vertex.
-};
-
-typedef std::list<Edge> EdgeList; ///< List of edges.
+#ifdef __GNU_LIBRARY__
+typedef __gnu_cxx::slist<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
+#else
 typedef std::list<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
+#endif
 
 class PartitionerTraits
 {
@@ -60,11 +48,13 @@ public:
 		 * @param partitioner The partitioner to which the block belongs.
 		 * @param index The index in the partitioner's blocklist at which this block can be found.
 		 */
-		block_t(size_t index) : index(index), stable(false), visited(false) {}
+		block_t(size_t index) : index(index), stable(false), divstable(false), visited(false) {}
 		virtual bool update(block_t* has_edge_from=NULL) = 0; ///< Update the @c m_bottom and @c m_incoming members.
 		VertexList vertices; ///< The vertices in the block.
+		VertexList incoming; ///< The vertices with an edge to a vertex in the block.
 		size_t index; ///< The index of the block in @c m_partitioner's @c blocklist.
 		unsigned char stable : 1; ///< True when the block is stable in the current partition. Used by the partition refinement algorithms.
+		unsigned char divstable : 1;
 		unsigned char visited : 1;
 	};
 };
@@ -110,7 +100,7 @@ public:
 			B2 = m_blocks.begin();
 			while (not found_splitter and B2 != m_blocks.end())
 			{
-				if (B2->stable)
+				if (B2->divstable)
 				{
 				  ++B2;
 				  continue;
@@ -119,7 +109,7 @@ public:
         if (split(B1))
           found_splitter = true;
         else
-          ++B2;
+          B2++->divstable = true;
       }
 
       if (not found_splitter)
@@ -132,9 +122,9 @@ public:
           continue;
         }
 				std::list<block_t*> adjacent;
-				for (typename EdgeList::const_iterator e = B2->incoming.begin(); e != B2->incoming.end(); ++e)
+				for (VertexList::const_iterator src = B2->incoming.begin(); src != B2->incoming.end(); ++src)
 				{
-					vertex_t& v = m_pg.vertex(e->src);
+					vertex_t& v = m_pg.vertex(*src);
 					v.visit();
 					if ((not v.block->visited) and (v.block != &(*B2)))
 					{
@@ -152,8 +142,8 @@ public:
 					}
 					adjacent.pop_front();
 				}
-				for (typename EdgeList::const_iterator e = B2->incoming.begin(); e != B2->incoming.end(); ++e)
-          m_pg.vertex(e->src).clear();
+				for (VertexList::const_iterator src = B2->incoming.begin(); src != B2->incoming.end(); ++src)
+          m_pg.vertex(*src).clear();
 				if (not found_splitter)
 				  B2++->stable = true;
 			}
@@ -162,6 +152,7 @@ public:
 			{
 			  if (refine(*B1))
 				{
+          B1->divstable = false;
 				  for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
 					{
 						B->stable = false;
@@ -212,25 +203,36 @@ protected:
 	bool refine(block_t& B)
 	{
 		// m_split contains a subset of B
+	  size_t sB = 0, sC = 0;
     m_blocks.push_back(block_t(m_pg, m_blocks.size()));
 		block_t& C = m_blocks.back();
-		VertexList::iterator it = B.vertices.begin();
-		while (it != B.vertices.end())
+    B.vertices.push_front(0);
+		C.vertices.push_front(0);
+		VertexList::iterator iB = B.vertices.begin();
+		VertexList::iterator pB = iB++;
+		VertexList::iterator iC = C.vertices.begin();
+		while (iB != B.vertices.end())
 		{
-		  vertex_t& v = m_pg.vertex(*it);
+		  vertex_t& v = m_pg.vertex(*iB);
 		  if (v.pos)
 		  {
-		    C.vertices.push_back(*it);
+		    ++sC;
 		    v.block = &C;
 	      v.pos = false;
-		    it = B.vertices.erase(it);
+	      iC = C.vertices.insert_after(iC, *iB);
+        iB = B.vertices.erase_after(pB);
 		  }
 		  else
-		    ++it;
+		  {
+		    pB = iB++;
+        ++sB;
+		  }
 		}
+		C.vertices.pop_front();
+    B.vertices.pop_front();
 
-		mCRL2log(debug, "partitioner") << "Created block #" << m_blocks.size() + 1 << ": " << C.vertices.size()
-		                               << " nodes (left "<< B.vertices.size() << ").\n";
+		mCRL2log(debug, "partitioner") << "Created block #" << C.index << ": " << sC
+		                               << " nodes (left "<< sB << ").\n";
 
 		bool result = B.update(&C);
 		if (C.update(&B))

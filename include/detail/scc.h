@@ -5,9 +5,6 @@
 #include <list>
 #include <vector>
 
-// TODO: remove
-#include <iostream>
-
 namespace graph {
 namespace impl {
 

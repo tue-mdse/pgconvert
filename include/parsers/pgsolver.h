@@ -114,12 +114,11 @@ namespace graph
         if (s.fail() or c < '0' or c > '1')
           parse_error(s, "Could not parse vertex player.");
         v.label.player = c == '0' ? pg::even : pg::odd;
-        s >> succ;
-        if (s.fail())
-          parse_error(s,
-              "Could not parse successor index (vertex with outdegree 0?).");
         do
         {
+          s >> succ;
+          if (s.fail())
+            parse_error(s, "Could not parse successor index.");
           v.out.insert(succ);
           if (succ >= m_pg.size())
             m_pg.resize(succ + 1);
@@ -127,16 +126,12 @@ namespace graph
           s >> c;
           if (s.fail())
             c = ';'; // Allow missing semicolon at end of file.
-          if (c == ';')
-            break;
-          s >> succ;
-          if (s.fail())
-            parse_error(s, "Could not parse successor index after comma.");
         }
         while (c == ',');
         if (c == '"')
         {
           s.ignore(std::numeric_limits<std::streamsize>::max(), '"');
+          s >> c;
         }
         if (c != ';')
           parse_error(s, "Invalid vertex specification, expected semicolon.");

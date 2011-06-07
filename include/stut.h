@@ -14,7 +14,7 @@ public:
 
 	typedef graph::PartitionerTraits::vertex_t<block_t, Label> vertex_t;
 	typedef graph::KripkeStructure<vertex_t> graph_t;
-	typedef std::list<VertexIndex> vertexlist_t;
+	typedef VertexList vertexlist_t;
 
 	struct block_t : public PartitionerTraits::block_t
 	{
@@ -22,6 +22,7 @@ public:
 		bool update(PartitionerTraits::block_t* has_edge_from=NULL)
 		{
 			bool result = false;
+			divstable = true;
 			incoming.clear();
 			bottom.clear();
 			for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i)
@@ -31,7 +32,7 @@ public:
 				{
 					if (pg.vertex(*src).block != this)
 					{
-						incoming.push_back(Edge(*src, *i));
+						incoming.push_front(*src);
 						result = result or (pg.vertex(*src).block == has_edge_from);
 					}
 				}
@@ -45,13 +46,12 @@ public:
 					}
 				}
 				if (is_bottom)
-					bottom.push_back(*i);
+					bottom.push_front(*i);
 			}
 			return result;
 		}
 		graph_t& pg; ///< The partition(er) to which the block belongs.
 		vertexlist_t bottom; ///< A list of vertices in the block that have only outgoing edges to other blocks.
-		EdgeList incoming; ///< A list of edges that have a destination in the block.
 	};
 
 	typedef std::list<block_t> blocklist_t;
@@ -86,7 +86,7 @@ protected:
 		pmap blocks;
 
 		// Assign blocks to vertices
-		for (size_t i = 0; i < m_pg.size(); ++i)
+		for (size_t i = m_pg.size() - 1; i != (size_t)-1; --i)
 		{
 			vertex_t& v = m_pg.vertex(i);
 			typename pmap::iterator B = blocks.find(v.label);
@@ -96,7 +96,7 @@ protected:
 				B = blocks.insert(std::make_pair(v.label, &m_blocks.back())).first;
 			}
 			v.block = B->second;
-			B->second->vertices.push_back(i);
+			B->second->vertices.push_front(i);
 		}
 
 		for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
@@ -125,13 +125,9 @@ protected:
 	{
 		bool all_bottoms_visited = true;
 		for (VertexList::const_iterator v = B1->bottom.begin(); all_bottoms_visited and v != B1->bottom.end(); ++v)
-		{
 		  all_bottoms_visited = all_bottoms_visited and m_pg.vertex(*v).visited();
-		}
 		if (all_bottoms_visited)
-		{
 			return false;
-		}
 
 		VertexList todo;
 		for (VertexList::const_iterator vi = B1->vertices.begin(); vi != B1->vertices.end(); ++vi)
@@ -140,7 +136,7 @@ protected:
 			if (v.visited())
 			{
 			  v.pos = true;
-        todo.push_back(*vi);
+        todo.push_front(*vi);
 			}
 		}
 		while (not todo.empty())
@@ -153,7 +149,7 @@ protected:
 				if (p.block == B1 and not p.pos)
 				{
 				  p.pos = true;
-					todo.push_back(*pred);
+					todo.push_front(*pred);
 				}
 			}
 		}
@@ -177,13 +173,11 @@ protected:
 			VertexList::const_iterator v = B->vertices.begin();
 			vertex_t& repr = quotient.vertex(dst);
 			repr.label = m_pg.vertex(*v).label;
-			if (divergent(&(*B)))
-			  repr.out.insert(dst);
-			for (EdgeList::const_iterator e = B->incoming.begin(); e != B->incoming.end(); ++e)
-				m_pg.vertex(m_pg.vertex(e->src).block->index).clear();
-			for (EdgeList::const_iterator e = B->incoming.begin(); e != B->incoming.end(); ++e)
+			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
+				m_pg.vertex(m_pg.vertex(*sv).block->index).clear();
+			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
 			{
-				src = m_pg.vertex(e->src).block->index;
+				src = m_pg.vertex(*sv).block->index;
 				if (not m_pg.vertex(src).visited())
 				{
 					quotient.vertex(src).out.insert(dst);
@@ -192,21 +186,6 @@ protected:
 				}
 			}
 		}
-	}
-private:
-	/**
-	 * Decide whether @a B is divergent for @a p. If player @a p can force the play to
-	 * stay in @a B from any vertex in @a B, then @a B is divergent for @a p.
-	 * @param B The block for which to decide divergence.
-	 * @param p The player for which to decide divergence.
-	 * @return @c true if @a B is divergent for @a p, @c false otherwise.
-	 */
-	bool divergent(const block_t* B)
-	{
-		for (EdgeList::const_iterator it = B->incoming.begin(); it != B->incoming.end(); ++it)
-			if (m_pg.vertex(it->src).block == B)
-				return true;
-		return false;
 	}
 };
 

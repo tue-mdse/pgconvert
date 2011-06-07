@@ -22,7 +22,8 @@ namespace graph
     {
       bool result = false;
       incoming.clear();
-      bottom.clear();
+      exit.clear();
+      size = 0;
       // In initial update, set the .external fields right (assume they were initialised to 0)
       if (has_edge_from == NULL)
       {
@@ -37,11 +38,12 @@ namespace graph
       for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i)
       {
         vertex_t& v = pg.vertex(*i);
+        ++size;
         for (VertexSet::const_iterator src = v.in.begin(); src != v.in.end(); ++src)
         {
           if (pg.vertex(*src).block != this)
           {
-            incoming.push_back(Edge(*src, *i));
+            incoming.push_front(*src);
             if (pg.vertex(*src).block == has_edge_from)
             {
               result = true;
@@ -49,17 +51,16 @@ namespace graph
             }
           }
         }
-        bool is_bottom = true;
+        // TODO: change this to use a 2-pass system in which .external is used to check
+        //       for exits.
         for (VertexSet::const_iterator dst = v.out.begin(); dst != v.out.end(); ++dst)
         {
-          if (this == pg.vertex(*dst).block)
+          if (pg.vertex(*dst).block != this)
           {
-            is_bottom = false;
+            exit.push_front(*i);
             break;
           }
         }
-        if (is_bottom)
-          bottom.push_back(*i);
       }
       return result;
     }
@@ -91,10 +92,9 @@ namespace graph
         repr.label.prio = orig.label.prio;
         if (divergent(&(*B), repr.label.player))
           repr.out.insert(dst);
-        for (EdgeList::const_iterator e = B->incoming.begin(); e
-            != B->incoming.end(); ++e)
+        for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
         {
-          src = m_pg.vertex(e->src).block->index;
+          src = m_pg.vertex(*sv).block->index;
           if (m_pg.vertex(src).visitcounter != vc)
           {
             quotient.vertex(src).out.insert(dst);
@@ -132,7 +132,7 @@ namespace graph
             if (w.visitcounter == w.out.size() or (w.label.player == p and w.visited()))
             {
               w.pos = true;
-              todo.push_back(*pred);
+              todo.push_front(*pred);
             }
           }
         }
@@ -172,18 +172,17 @@ namespace graph
       pmap blocks;
 
       // Assign blocks to vertices
-      for (size_t i = 0; i < m_pg.size(); ++i)
+      for (size_t i = m_pg.size() - 1; i != (size_t)-1; --i)
       {
         vertex_t &v = m_pg.vertex(i);
         pmap::iterator B = blocks.find(v.label.prio);
         if (B == blocks.end())
         {
           m_blocks.push_back(block_t(m_pg, m_blocks.size()));
-          B
-              = blocks.insert(std::make_pair(v.label.prio, &m_blocks.back())).first;
+          B = blocks.insert(std::make_pair(v.label.prio, &m_blocks.back())).first;
         }
         v.block = B->second;
-        B->second->vertices.push_back(i);
+        B->second->vertices.push_front(i);
       }
 
       for (blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
@@ -200,12 +199,12 @@ namespace graph
         vertex_t& v = m_pg.vertex(*vi);
         v.visitcounter = v.external;
         if (v.visitcounter == v.out.size() or (v.label.player == p and v.visited()))
-          todo.push_back(*vi);
+          todo.push_front(*vi);
       }
 
       size_t pos_size = attractor(B, p, todo);
 
-      if (pos_size == 0 or pos_size == B->vertices.size())
+      if (pos_size == 0 or pos_size == B->size)
       {
         for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
           m_pg.vertex(*vi).pos = false;
@@ -223,18 +222,18 @@ namespace graph
       VertexList::const_iterator vi;
       size_t i, pos_size;
 
-      oldcounters.resize(B1->vertices.size());
+      oldcounters.resize(B1->size);
       for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
       {
         vertex_t& v = m_pg.vertex(*vi);
         oldcounters[i] = v.visitcounter;
         if (v.visitcounter == v.out.size() or (v.label.player == even and v.visited()))
-          todo.push_back(*vi);
+          todo.push_front(*vi);
       }
 
       pos_size = attractor(B1, even, todo);
 
-      if (pos_size != 0 and pos_size != B1->vertices.size())
+      if (pos_size != 0 and pos_size != B1->size)
         return true;
 
       todo.clear();
@@ -244,12 +243,12 @@ namespace graph
         m_pg.vertex(*vi).visitcounter = oldcounters[i];
         m_pg.vertex(*vi).pos = false;
         if (v.visitcounter == v.out.size() or (v.label.player == odd and v.visited()))
-          todo.push_back(*vi);
+          todo.push_front(*vi);
       }
 
       pos_size = attractor(B1, odd, todo);
 
-      if (pos_size == 0 or pos_size == B1->vertices.size())
+      if (pos_size == 0 or pos_size == B1->size)
       {
         for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
         {
@@ -284,8 +283,7 @@ namespace graph
     bool
     GovernedStutteringPartitioner::split(const block_t* B1, const block_t* B2)
     {
-      if (B1 == B2)
-        return split(B1);
+
       switch (m_pg.vertex(B1->vertices.front()).div)
       {
         case 3:
@@ -309,21 +307,19 @@ namespace graph
           bool odd_rules = false;
           bool bottom_error = false;
 
-          for (VertexList::const_iterator vi = B1->vertices.begin(); vi
-              != B1->vertices.end() and not (bottom_error or (even_rules
-              and odd_rules)); ++vi)
+          for (VertexList::const_iterator vi = B1->exit.begin(); vi != B1->exit.end()
+               and not (bottom_error or (even_rules and odd_rules)); ++vi)
           {
             vertex_t& v = m_pg.vertex(*vi);
-            if (v.external)
+            if (v.external == v.out.size() and not v.visited())
+              bottom_error = true;
+            else
+            if (v.visitcounter != v.external)
             {
-              bottom_error = (v.external == v.out.size() and not v.visited());
-              if (v.visitcounter != v.out.size())
-              {
-                if (v.label.player == odd)
-                  odd_rules = true;
-                else
-                  even_rules = true;
-              }
+              if (v.label.player == odd)
+                odd_rules = true;
+              else
+                even_rules = true;
             }
           }
 

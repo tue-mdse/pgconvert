@@ -26,15 +26,15 @@ public:
 	};
 
 	typedef graph::KripkeStructure<vertex_t> graph_t;
-	typedef std::list<VertexIndex> vertexlist_t;
+	typedef VertexList vertexlist_t;
 
 	struct block_t : public graph::PartitionerTraits::block_t
 	{
 		block_t(graph_t& pg, size_t index) : graph::PartitionerTraits::block_t(index), pg(pg) {}
 		bool update(graph::PartitionerTraits::block_t* has_edge_from=NULL); ///< Update the @c m_bottom and @c m_incoming members.
+    size_t size;
 		graph_t& pg; ///< The partition(er) to which the block belongs.
-		vertexlist_t bottom; ///< A list of vertices in the block that have only outgoing edges to other blocks.
-		EdgeList incoming; ///< A list of edges that have a destination in the block.
+		vertexlist_t exit; ///< A list of vertices in the block that have only outgoing edges to other blocks.
 	};
 
 	typedef std::list<block_t> blocklist_t;
