@@ -14,8 +14,9 @@ public:
 		scc       = 0,//!< SCC decomposition
 		stut      = 1,//!< Stuttering equivalence
 		gstut     = 2,//!< Governed stuttering equivalence
-		scc_gstut = 3, //<! Governed stuttering equivalence after SCC reduction
-		invalid   = 4 //!< Value indicating invalid equivalence name.
+		scc_gstut = 3,//!< Governed stuttering equivalence after SCC reduction
+		wgstut    = 4,//!< Weak governed stuttering equivalence
+		invalid   = 5 //!< Value indicating invalid equivalence name.
 	};
 	/// @brief Default constructor.
 	Equivalence() {}

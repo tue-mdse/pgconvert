@@ -2,6 +2,7 @@
 #include "parsers/pgsolver.h"
 #include "parsers/dot.h"
 #include "govstut.h"
+#include "wgovstut.h"
 #include "stut.h"
 #include "pg.h"
 
@@ -218,6 +219,18 @@ public:
       encode_divergence(pg);
       partition(m_equivalence, p, &output);
       decode_divergence(output);
+      timer().finish("reduction");
+      save(output, outstream);
+    }
+    else if (m_equivalence == Equivalence::wgstut)
+    {
+      typedef graph::pg::WeakGovernedStutteringPartitioner<graph::pg::Label>::graph_t graph_t;
+      graph_t pg;
+      graph_t output;
+      graph::pg::WeakGovernedStutteringPartitioner<graph::pg::Label> p(pg);
+      load(pg, instream);
+      timer().start("reduction");
+      partition(m_equivalence, p, &output);
       timer().finish("reduction");
       save(output, outstream);
     }
