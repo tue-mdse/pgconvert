@@ -150,6 +150,7 @@ namespace graph
               // if (divergent(&(*B), (Player)repr.label.player))
               if (orig.div == 3)
                 repr.out.insert(dst);
+              else
               for (VertexList::const_iterator sv = B->incoming.begin(); sv
                   != B->incoming.end(); ++sv)
               {
