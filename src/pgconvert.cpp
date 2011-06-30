@@ -224,15 +224,20 @@ public:
     }
     else if (m_equivalence == Equivalence::wgstut)
     {
-      typedef graph::pg::WeakGovernedStutteringPartitioner<graph::pg::Label>::graph_t graph_t;
-      graph_t pg;
-      graph_t output;
-      graph::pg::WeakGovernedStutteringPartitioner<graph::pg::Label> p(pg);
-      load(pg, instream);
+      typedef graph::pg::GovernedStutteringPartitioner<graph::pg::Label>::graph_t graph_t;
+      graph_t pg1;
+      graph_t pg2;
+      graph::pg::ParadisePartitioner<graph::pg::Label> pp(pg1);
+      graph::pg::GovernedStutteringPartitioner<graph::pg::Label> gsp(pg2);
+      load(pg1, instream);
       timer().start("reduction");
-      partition(m_equivalence, p, &output);
+      timer().start("paradise reduction");
+      pp.partition(&pg2);
+      timer().finish("paradise reduction");
+      pg1.resize(0);
+      partition(m_equivalence, gsp, &pg1);
       timer().finish("reduction");
-      save(output, outstream);
+      save(pg1, outstream);
     }
 		return true;
 	}

@@ -9,13 +9,12 @@ namespace graph
   namespace pg
   {
 
-    // TODO: make this a descendant of GovernedStutteringPartitioner
     /**
-     * @class GovernedStutteringPartitioner
-     * @brief Partitioner that decides governed stuttering equivalence.
+     * @class ParadisePartitioner
+     * @brief Partitioner that decides paradise equivalence.
      */
     template<typename Label>
-      class WeakGovernedStutteringPartitioner : public graph::Partitioner<
+      class ParadisePartitioner : public graph::Partitioner<
           GovernedStutteringTraits<Label> >
       {
         public:
@@ -29,7 +28,7 @@ namespace graph
               blocklist_t;
           using Partitioner<GovernedStutteringTraits<Label> >::m_blocks;
           using Partitioner<GovernedStutteringTraits<Label> >::m_pg;
-          WeakGovernedStutteringPartitioner(graph_t& pg) :
+          ParadisePartitioner(graph_t& pg) :
             graph::Partitioner<GovernedStutteringTraits<Label> >(pg)
           {
           }
@@ -44,6 +43,43 @@ namespace graph
             m_blocks.push_back(block_t(m_pg, m_blocks.size()));
             return m_blocks.back();
           }
+
+          void partition(graph_t* quotient=NULL)
+          {
+        	  create_initial_partition();
+        	  size_t n = m_blocks.size();
+        	  mCRL2log(verbose, "partitioner") << "Created " << n << " initial blocks.\n";
+        	  // Split into paradise / non-paradise blocks
+        	  for (typename blocklist_t::iterator B = m_blocks.begin(); n != 0; ++B, --n)
+        	  {
+        		  if (split(&*B))
+        		  {
+        			  refine(*B);
+        		  }
+        	  }
+
+			  // Split non-paradise blocks into 1 block per node
+        	  for (typename blocklist_t::iterator B = m_blocks.begin(); B
+                != m_blocks.end(); ++B)
+        	  {
+        		  if (m_pg.vertex(B->vertices.front()).div != 3)
+        		  {
+        			  // This is not a paradise: split into one block per node
+        			  VertexList::iterator v = ++B->vertices.begin();
+        			  while (v != B->vertices.end())
+        			  {
+        				  m_blocks.push_back(block_t(m_pg, m_blocks.size()));
+        				  m_blocks.back().vertices.push_front(*v);
+        				  v = B->vertices.erase(v);
+        				  B->update();
+        				  m_blocks.back().update();
+        			  }
+        		  }
+        	  }
+			  if (quotient)
+				  this->quotient(*quotient);
+          }
+
         protected:
           /**
            * @brief Creates the initial partition.
@@ -76,24 +112,10 @@ namespace graph
               B->update();
           }
 
-          /**
-           * @brief Attempts to split @a B1 using @a B2
-           *
-           * This is done by calculating the attractor set of a set of vertices @e S. If @a B1 is
-           * equal to @a B2, then @e S is the set of bottom vertices of @a B1. Otherwise, @e S is
-           * the set of vertices in @a B1 that have an outgoing edge to @a B2. Everything in the
-           * attractor set is stored in @a pos.
-           * @param B1 The block being split.
-           * @param B2 The splitter.
-           * @param pos The list of vertices that is in the attractor set of @e S.
-           * @return @c true if @a pos is a non-empty strict subset of @a B1, @c false otherwise.
-           */
           bool
           split(const block_t* B1, const block_t* B2)
           {
-            if (m_pg.vertex(B1->vertices.front()).div == 3)
-              return false;
-            return split_players(B1, B2);
+        	  return false;
           }
 
           bool
@@ -110,6 +132,10 @@ namespace graph
             for (VertexList::const_iterator vi = B->vertices.begin(); vi
                 != B->vertices.end(); ++vi)
               m_pg.vertex(*vi).clear();
+
+            if (result)
+              for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
+                m_pg.vertex(*vi).div = 0;
 
             return result;
           }
@@ -130,27 +156,21 @@ namespace graph
               m_pg.vertex(i).visitcounter = 0;
 
             size_t src, dst, vc = 1;
-            for (typename blocklist_t::const_iterator B = m_blocks.begin(); B
-                != m_blocks.end(); ++B, ++vc)
+            for (typename blocklist_t::const_iterator B = m_blocks.begin(); B != m_blocks.end(); ++B, ++vc)
             {
               dst = B->index;
               VertexIndex v;
               vertex_t& repr = g.vertex(dst);
-              for (VertexList::const_iterator it = B->vertices.begin(); it
-                  != B->vertices.end(); ++it)
-              {
-                v = *it;
-                if (m_pg.vertex(v).external)
-                  break;
-              }
-              vertex_t& orig = m_pg.vertex(v);
+              vertex_t& orig = m_pg.vertex(B->vertices.front());
 
-              repr.label.player = (orig.div == 3) ? (orig.label.prio % 2 == 0 ? even : odd ) : orig.label.player;
+              repr.label.player = (orig.div == 3) ? (((orig.label.prio % 2) == 0) ? even : odd ) : orig.label.player;
               repr.label.prio = orig.label.prio;
               // if (divergent(&(*B), (Player)repr.label.player))
-              if (orig.div == 3)
-                repr.out.insert(dst);
-              else
+              if (orig.div == 3 or orig.out.count(B->vertices.front()))
+              {
+            	  repr.out.insert(dst);
+            	  repr.in.insert(dst);
+              }
               for (VertexList::const_iterator sv = B->incoming.begin(); sv
                   != B->incoming.end(); ++sv)
               {
@@ -201,65 +221,6 @@ namespace graph
             return true;
           }
 
-          bool
-          split_players(const block_t* B1, const block_t* B2)
-          {
-            // Initialise edge list to all edges from B1 to B2
-            VertexList todo;
-            std::vector<size_t> oldcounters;
-            VertexList::const_iterator vi;
-            size_t i, pos_size;
-            size_t *prio = NULL;
-
-            oldcounters.resize(B1->size);
-            for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
-            {
-              vertex_t& v = m_pg.vertex(*vi);
-              oldcounters[i] = v.visitcounter;
-              if (((prio == NULL) or (*prio == v.label.prio)) and
-                  (v.visitcounter == v.out.size() or (v.label.player == even and v.visited())))
-              {
-                todo.push_front(*vi);
-                prio = &v.label.prio;
-              }
-            }
-
-            pos_size = attractor(B1, even, todo);
-
-            if (pos_size != 0 and pos_size != B1->size)
-              return true;
-
-            todo.clear();
-            prio = NULL;
-            for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
-            {
-              vertex_t& v = m_pg.vertex(*vi);
-              m_pg.vertex(*vi).visitcounter = oldcounters[i];
-              m_pg.vertex(*vi).pos = false;
-              if (((prio == NULL) or (*prio == v.label.prio)) and
-                  (v.visitcounter == v.out.size() or (v.label.player == odd and v.visited())))
-              {
-                todo.push_front(*vi);
-                prio = &v.label.prio;
-              }
-            }
-
-            pos_size = attractor(B1, odd, todo);
-
-            if (pos_size == 0 or pos_size == B1->size)
-            {
-              for (vi = B1->vertices.begin(), i = 0; vi != B1->vertices.end(); ++vi, ++i)
-              {
-                m_pg.vertex(*vi).clear();
-                m_pg.vertex(*vi).pos = false;
-              }
-            }
-            else
-              return true;
-
-            return false;
-          }
-
           /**
            * Calculate the attractor set for player @a p of @a todo in @a B. The vertices that
            * can reach @a todo are stored in @a result.
@@ -307,39 +268,6 @@ namespace graph
               m_pg.vertex(*it).clear();
             return result;
           }
-
-          /**
-           * Decide whether @a B is divergent for @a p. If player @a p can force the play to
-           * stay in @a B from any vertex in @a B, then @a B is divergent for @a p.
-           * @param B The block for which to decide divergence.
-           * @param p The player for which to decide divergence.
-           * @return @c true if @a B is divergent for @a p, @c false otherwise.
-           */
-          bool
-          divergent(const block_t* B, Player p)
-          {
-            for (VertexList::const_iterator src = B->vertices.begin(); src
-                != B->vertices.end(); ++src)
-            {
-              const vertex_t& v = m_pg.vertex(*src);
-              if (v.external == 0)
-                continue;
-              if (v.label.player != p)
-                return false;
-              bool can_stay_in_block = false;
-              for (VertexSet::const_iterator vi = v.out.begin(); vi
-                  != v.out.end(); ++vi)
-                if (m_pg.vertex(*vi).block == B)
-                {
-                  can_stay_in_block = true;
-                  break;
-                }
-              if (not can_stay_in_block)
-                return false;
-            }
-            return true;
-          }
-
       };
 
   } // namespace pg
