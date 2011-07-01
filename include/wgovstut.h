@@ -49,8 +49,9 @@ namespace graph
         	  create_initial_partition();
         	  size_t n = m_blocks.size();
         	  mCRL2log(verbose, "partitioner") << "Created " << n << " initial blocks.\n";
+
         	  // Split into paradise / non-paradise blocks
-        	  for (typename blocklist_t::iterator B = m_blocks.begin(); n != 0; ++B, --n)
+        	  for (typename blocklist_t::iterator B = m_blocks.begin(); n > 0; ++B, --n)
         	  {
         		  if (split(&*B))
         		  {
@@ -59,10 +60,10 @@ namespace graph
         	  }
 
 			  // Split non-paradise blocks into 1 block per node
-        	  for (typename blocklist_t::iterator B = m_blocks.begin(); B
-                != m_blocks.end(); ++B)
+        	  n = m_blocks.size();
+        	  for (typename blocklist_t::iterator B = m_blocks.begin(); n > 0; ++B, --n)
         	  {
-        		  if (m_pg.vertex(B->vertices.front()).div != 3)
+				  if (m_pg.vertex(B->vertices.front()).div != 3)
         		  {
         			  // This is not a paradise: split into one block per node
         			  VertexList::iterator v = ++B->vertices.begin();
@@ -76,7 +77,8 @@ namespace graph
         			  }
         		  }
         	  }
-			  if (quotient)
+
+        	  if (quotient)
 				  this->quotient(*quotient);
           }
 
@@ -127,15 +129,11 @@ namespace graph
                 != B->vertices.end(); ++vi)
               m_pg.vertex(*vi).div = 3;
 
-            result = split(B, m_pg.vertex(B->vertices.front()).label.prio % 2 == 0 ? even : odd);
+            result = split(B, m_pg.vertex(B->vertices.front()).label.prio % 2 == 0 ? odd : even);
 
             for (VertexList::const_iterator vi = B->vertices.begin(); vi
                 != B->vertices.end(); ++vi)
               m_pg.vertex(*vi).clear();
-
-            if (result)
-              for (VertexList::const_iterator vi = B->vertices.begin(); vi != B->vertices.end(); ++vi)
-                m_pg.vertex(*vi).div = 0;
 
             return result;
           }
@@ -251,7 +249,7 @@ namespace graph
                   != v.in.end(); ++pred)
               {
                 vertex_t& w = m_pg.vertex(*pred);
-                if (w.block == B and not w.pos and w.label.prio == v.label.prio)
+                if (w.block == B and not w.pos)
                 {
                   w.visit();
                   if (w.visitcounter == w.out.size() or (w.label.player == p
