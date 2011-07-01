@@ -59,7 +59,6 @@ public:
 			for (VertexList::const_iterator i = vertices.begin(); i
 					!= vertices.end(); ++i) {
 				vertex_t& v = pg.vertex(*i);
-				v.block = this;
 				++size;
 				for (VertexSet::const_iterator src = v.in.begin(); src
 						!= v.in.end(); ++src) {

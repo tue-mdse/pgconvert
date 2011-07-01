@@ -62,9 +62,11 @@ public:
 				while (v != B->vertices.end())
 				{
 					m_blocks.push_back(block_t(m_pg, m_blocks.size()));
-					m_blocks.back().vertices.push_front(*v);
+					block_t &C = m_blocks.back();
+					C.vertices.push_front(*v);
+					m_pg.vertex(*v).block = &C;
 					v = B->vertices.erase(v);
-					m_blocks.back().update();
+					C.update();
 				}
 				B->update();
 			}
@@ -156,11 +158,8 @@ protected:
 			repr.label.player = (orig.div == 3) ? (((orig.label.prio % 2) == 0) ? even : odd ) : orig.label.player;
 			repr.label.prio = orig.label.prio;
 			// if (divergent(&(*B), (Player)repr.label.player))
-			if (orig.label.prio == 2 and orig.out.count(B->vertices.front()))
-			std::cerr << "B" << B->index << " is div\n";
 			if (orig.div == 3 or orig.out.count(B->vertices.front()))
 			{
-				std::cerr << "B" << B->index << " is div\n";
 				repr.out.insert(dst);
 				repr.in.insert(dst);
 			}

@@ -225,6 +225,7 @@ protected:
 			if (v.pos)
 			{
 				++sC;
+				v.block = &C;
 				v.pos = false;
 				iC = C.vertices.insert_after(iC, *iB);
 				iB = B.vertices.erase_after(pB);
