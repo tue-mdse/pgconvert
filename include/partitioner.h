@@ -21,41 +21,48 @@ typedef __gnu_cxx::slist<graph::VertexIndex> VertexList; ///< List of vertices (
 typedef std::list<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
 #endif
 
-class PartitionerTraits
-{
+class PartitionerTraits {
 public:
-	template <typename Block, typename Label>
-	struct vertex_t : public graph::Vertex<Label>
-	{
+	template<typename Block, typename Label>
+	struct vertex_t: public graph::Vertex<Label> {
 	public:
-		vertex_t() : graph::Vertex<Label>(), block(NULL), visitbit(false), pos(false) {}
+		vertex_t() :
+			graph::Vertex<Label>(), block(NULL), visitbit(false), pos(false) {
+		}
 		Block *block; ///< The block to which @c v belongs.
-		unsigned char visitbit : 1; ///< Tag used by the partition refinement algorithms.
-    unsigned char pos : 1;
-		void visit() { visitbit = true; }
-		void clear() { visitbit = false; }
-		bool visited() const { return visitbit; }
+		unsigned char visitbit :1; ///< Tag used by the partition refinement algorithms.
+		unsigned char pos :1;
+		void visit() {
+			visitbit = true;
+		}
+		void clear() {
+			visitbit = false;
+		}
+		bool visited() const {
+			return visitbit;
+		}
 	};
 
 	/**
 	 * @struct Block
 	 * @brief Class representing a block in a partition.
 	 */
-	struct block_t
-	{
+	struct block_t {
 		/**
 		 * @brief Constructor.
 		 * @param partitioner The partitioner to which the block belongs.
 		 * @param index The index in the partitioner's blocklist at which this block can be found.
 		 */
-		block_t(size_t index) : index(index), stable(false), divstable(false), visited(false) {}
-		virtual bool update(block_t* has_edge_from=NULL) = 0; ///< Update the @c m_bottom and @c m_incoming members.
+		block_t(size_t index) :
+			index(index), stable(false), divstable(false), visited(false) {
+		}
+		virtual bool update(block_t* has_edge_from = NULL) = 0; ///< Update the @c m_bottom and @c m_incoming members.
 		VertexList vertices; ///< The vertices in the block.
 		VertexList incoming; ///< The vertices with an edge to a vertex in the block.
 		size_t index; ///< The index of the block in @c m_partitioner's @c blocklist.
-		unsigned char stable : 1; ///< True when the block is stable in the current partition. Used by the partition refinement algorithms.
-		unsigned char divstable : 1;
-		unsigned char visited : 1;
+		unsigned char stable :1; ///< True when the block is stable in the current partition. Used by the partition refinement algorithms.
+		unsigned char divstable :1;
+		unsigned char visited :1;
 	};
 };
 
@@ -63,9 +70,8 @@ public:
  * @class Partitioner
  * @brief Base class for partition refinement algorithms.
  */
-template <class partitioner_traits>
-class Partitioner
-{
+template<class partitioner_traits>
+class Partitioner {
 	friend class Block;
 public:
 	/**
@@ -77,7 +83,9 @@ public:
 	typedef typename partitioner_traits::blocklist_t blocklist_t;
 	typedef typename partitioner_traits::graph_t graph_t;
 
-	Partitioner(graph_t& pg) : m_pg(pg) {}
+	Partitioner(graph_t& pg) :
+		m_pg(pg) {
+	}
 	/**
 	 * @brief Finds the coarsest partition for @a pg. If quotient is given, then
 	 *   it will be modified to contain the quotient of @a pg given the calculated
@@ -86,13 +94,13 @@ public:
 	 * @param quotient A reference to the parity game that will contain the quotient.
 	 *   The quotient is not stored if this parameter is @c NULL.
 	 */
-	void partition(graph_t* quotient=NULL)
-	{
+	void partition(graph_t* quotient = NULL) {
 		bool found_splitter = true;
 		block_t* B1 = NULL;
 		typename blocklist_t::iterator B2;
 		create_initial_partition();
-		mCRL2log(verbose, "partitioner") << "Created " << m_blocks.size() << " initial blocks.\n";
+		mCRL2log(verbose, "partitioner")
+<<		"Created " << m_blocks.size() << " initial blocks.\n";
 		while (found_splitter)
 		{
 			found_splitter = false;
@@ -102,25 +110,25 @@ public:
 			{
 				if (B2->divstable)
 				{
-				  ++B2;
-				  continue;
-			  }
-        B1 = &(*B2);
-        if (split(B1))
-          found_splitter = true;
-        else
-          B2++->divstable = true;
-      }
+					++B2;
+					continue;
+				}
+				B1 = &(*B2);
+				if (split(B1))
+				found_splitter = true;
+				else
+				B2++->divstable = true;
+			}
 
-      if (not found_splitter)
-        B2 = m_blocks.begin();
+			if (not found_splitter)
+			B2 = m_blocks.begin();
 			while (not found_splitter and (B2 != m_blocks.end()))
 			{
-			  if (B2->stable)
-        {
-          ++B2;
-          continue;
-        }
+				if (B2->stable)
+				{
+					++B2;
+					continue;
+				}
 				std::list<block_t*> adjacent;
 				for (VertexList::const_iterator src = B2->incoming.begin(); src != B2->incoming.end(); ++src)
 				{
@@ -137,23 +145,23 @@ public:
 					adjacent.front()->visited = false;
 					if (not found_splitter)
 					{
-					  B1 = adjacent.front();
+						B1 = adjacent.front();
 						found_splitter = split(B1, &(*B2));
 					}
 					adjacent.pop_front();
 				}
 				for (VertexList::const_iterator src = B2->incoming.begin(); src != B2->incoming.end(); ++src)
-          m_pg.vertex(*src).clear();
+				m_pg.vertex(*src).clear();
 				if (not found_splitter)
-				  B2++->stable = true;
+				B2++->stable = true;
 			}
 
 			if (found_splitter)
 			{
-			  if (refine(*B1))
+				if (refine(*B1))
 				{
-          B1->divstable = false;
-				  for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
+					B1->divstable = false;
+					for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
 					{
 						B->stable = false;
 					}
@@ -161,16 +169,16 @@ public:
 			}
 		}
 		if (quotient)
-			this->quotient(*quotient);
+		this->quotient(*quotient);
 	}
 	/**
 	 * @brief Dump a textual representation of the partitioning to s.
 	 * @details For example, if the original parity game contained 5 nodes, the
 	 *    output might look something like this:
 	 *    @verbatim
-{ 0, 2 }
-{ 1, 3 }
-{ 4 }     @endverbatim
+	 { 0, 2 }
+	 { 1, 3 }
+	 { 4 }     @endverbatim
 	 * @param s The stream to dump the representation to.
 	 */
 	void dump(std::ostream& s)
@@ -203,40 +211,39 @@ protected:
 	bool refine(block_t& B)
 	{
 		// m_split contains a subset of B
-	  size_t sB = 0, sC = 0;
-    m_blocks.push_back(block_t(m_pg, m_blocks.size()));
+		size_t sB = 0, sC = 0;
+		m_blocks.push_back(block_t(m_pg, m_blocks.size()));
 		block_t& C = m_blocks.back();
-    B.vertices.push_front(0);
+		B.vertices.push_front(0);
 		C.vertices.push_front(0);
 		VertexList::iterator iB = B.vertices.begin();
 		VertexList::iterator pB = iB++;
 		VertexList::iterator iC = C.vertices.begin();
 		while (iB != B.vertices.end())
 		{
-		  vertex_t& v = m_pg.vertex(*iB);
-		  if (v.pos)
-		  {
-		    ++sC;
-		    v.block = &C;
-	      v.pos = false;
-	      iC = C.vertices.insert_after(iC, *iB);
-        iB = B.vertices.erase_after(pB);
-		  }
-		  else
-		  {
-		    pB = iB++;
-        ++sB;
-		  }
+			vertex_t& v = m_pg.vertex(*iB);
+			if (v.pos)
+			{
+				++sC;
+				v.pos = false;
+				iC = C.vertices.insert_after(iC, *iB);
+				iB = B.vertices.erase_after(pB);
+			}
+			else
+			{
+				pB = iB++;
+				++sB;
+			}
 		}
 		C.vertices.pop_front();
-    B.vertices.pop_front();
+		B.vertices.pop_front();
 
 		mCRL2log(debug, "partitioner") << "Created block #" << C.index << ": " << sC
-		                               << " nodes (left "<< sB << ").\n";
+		<< " nodes (left "<< sB << ").\n";
 
 		bool result = B.update(&C);
 		if (C.update(&B))
-			return true;
+		return true;
 		return result;
 	}
 
@@ -261,7 +268,7 @@ protected:
 	 *   reach @a B2.
 	 */
 	virtual bool split(const block_t* B1, const block_t* B2) = 0;
-  virtual bool split(const block_t* B1) = 0;
+	virtual bool split(const block_t* B1) = 0;
 	/**
 	 * @brief Writes the quotient induced by the current partition to @a g.
 	 * @pre m_vertices represents the coarsest partition that the partition()

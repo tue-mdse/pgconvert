@@ -172,11 +172,16 @@ public:
 		mCRL2log(verbose) << "Performing " << m_equivalence.desc() << " reduction." << std::endl;
 		if (m_equivalence == Equivalence::scc)
 		{
-      typedef graph::KripkeStructure<graph::Vertex<graph::pg::Label> > graph_t;
+      typedef graph::KripkeStructure<graph::Vertex<graph::pg::DivLabel> > graph_t;
 			graph_t pg;
 			load(pg, instream);
 			timer().start("reduction");
 			collapse_sccs(pg);
+			for (size_t i = 0; i < pg.size(); ++i)
+			{
+				if (pg.vertex(i).label.div)
+					pg.vertex(i).out.insert(i);
+			}
 			timer().finish("reduction");
 			save(pg, outstream);
 		}
