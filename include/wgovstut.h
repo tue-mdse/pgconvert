@@ -53,19 +53,20 @@ public:
 
 		// Split non-paradise blocks into 1 block per node
 		n = m_blocks.size();
+		size_t l = n;
 		for (typename blocklist_t::iterator B = m_blocks.begin(); n > 0; ++B, --n)
 		{
 			if (m_pg.vertex(B->vertices.front()).div != 3)
 			{
 				// This is not a paradise: split into one block per node
-				VertexList::iterator v = ++(B->vertices.begin());
+				VertexList::iterator v = B->vertices.begin(), prev = v++;
 				while (v != B->vertices.end())
 				{
-					m_blocks.push_back(block_t(m_pg, m_blocks.size()));
+					m_blocks.push_back(block_t(m_pg, l++));
 					block_t &C = m_blocks.back();
 					C.vertices.push_front(*v);
 					m_pg.vertex(*v).block = &C;
-					v = B->vertices.erase(v);
+					v = B->vertices.erase_after(prev);
 					C.update();
 				}
 				B->update();

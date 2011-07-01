@@ -4,7 +4,7 @@ set (MCRL2_LIB "" CACHE PATH "Path to mCRL2 lib dir.")
 set (MCRL2_INCLUDE "" CACHE PATH "Path to mCRL2 include dir.")
 link_directories (${MCRL2_LIB})
 include_directories (include ${MCRL2_INCLUDE})
-add_library (libmcrl2_utilities UNKNOWN IMPORTED)
+add_library (libmcrl2_utilities STATIC IMPORTED)
 add_executable (pgconvert 
   src/pgconvert.cpp 
   src/equivalence.cpp 
