@@ -12,11 +12,13 @@ public:
 	 */
 	enum Eq {
 		scc       = 0,//!< SCC decomposition
-		stut      = 1,//!< Stuttering equivalence
-		gstut     = 2,//!< Governed stuttering equivalence
-		scc_gstut = 3,//!< Governed stuttering equivalence after SCC reduction
-		wgstut    = 4,//!< Weak governed stuttering equivalence
-		invalid   = 5 //!< Value indicating invalid equivalence name.
+		bisim	  = 1,//!< Strong bisimulation
+		fmib      = 2,//!< Forced-move identifying bisimulation
+		stut      = 3,//!< Stuttering equivalence
+		gstut     = 4,//!< Governed stuttering equivalence
+		scc_gstut = 5,//!< Governed stuttering equivalence after SCC reduction
+		wgstut    = 6,//!< Weak governed stuttering equivalence
+		invalid   = 7 //!< Value indicating invalid equivalence name.
 	};
 	/// @brief Default constructor.
 	Equivalence() {}

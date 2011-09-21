@@ -92,8 +92,7 @@ protected:
 			typename pmap::iterator B = blocks.find(v.label);
 			if (B == blocks.end())
 			{
-				m_blocks.push_back(block_t(m_pg, m_blocks.size()));
-				B = blocks.insert(std::make_pair(v.label, &m_blocks.back())).first;
+				B = blocks.insert(std::make_pair(v.label, &newblock())).first;
 			}
 			v.block = B->second;
 			B->second->vertices.push_front(i);
@@ -167,6 +166,12 @@ protected:
 	{
 		quotient.resize(m_blocks.size());
 		size_t src, dst, vc = 1;
+
+		// Make sure node 0 is in block 0
+		size_t oldblock = m_pg.vertex(0).block->index;
+		m_pg.vertex(0).block->index = 0;
+		m_blocks.front().index = oldblock;
+
 		for (typename blocklist_t::const_iterator B = m_blocks.begin(); B != m_blocks.end(); ++B, ++vc)
 		{
 			dst = B->index;

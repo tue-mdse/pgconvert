@@ -18,11 +18,12 @@ namespace graph
     {
       public:
         typedef Vertex vertex_t;
+        typedef std::vector<vertex_t> vertices_t;
         /**
          * @brief Returns the vertices as a constant vector.
          * @return The list of vertices of the game.
          */
-        const std::vector<vertex_t>&
+        const vertices_t&
         vertices() const
         {
           return m_vertices;
@@ -50,6 +51,14 @@ namespace graph
         empty() const
         {
           return m_vertices.empty();
+        }
+        const size_t
+        num_edges() const
+        {
+          size_t result = 0;
+          for (typename vertices_t::const_iterator v = m_vertices.begin(); v != m_vertices.end(); ++v)
+        	result += v->out.size();
+          return result;
         }
         /**
          * @brief Resize the internal vertex array (dangerous!)
@@ -79,11 +88,7 @@ namespace graph
           impl::collapse(m_vertices, scc);
         }
       protected:
-        std::vector<vertex_t> m_vertices; ///< The vertex array.
-        virtual void
-        mark_divergent(vertex_t& v)
-        {
-        }
+        vertices_t m_vertices; ///< The vertex array.
     };
 
   enum FileFormat

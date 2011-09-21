@@ -236,7 +236,12 @@ protected:
 		for (VertexIndex i = 0; i < m_pg.size(); ++i)
 			m_pg.vertex(i).visitcounter = 0;
 
-		size_t src, dst, vc = 1;
+		// Make sure node 0 is in block 0
+    size_t oldblock = m_pg.vertex(0).block->index;
+    m_pg.vertex(0).block->index = 0;
+    m_blocks.front().index = oldblock;
+
+    size_t src, dst, vc = 1;
 		for (typename blocklist_t::const_iterator B = m_blocks.begin(); B
 				!= m_blocks.end(); ++B, ++vc) {
 			dst = B->index;

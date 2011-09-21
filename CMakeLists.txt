@@ -9,5 +9,5 @@ add_executable (pgconvert
   src/pgconvert.cpp 
   src/equivalence.cpp 
 )
-target_link_libraries (pgconvert mcrl2_utilities)
+target_link_libraries (pgconvert mcrl2_utilities boost_regex)
 

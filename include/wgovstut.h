@@ -40,7 +40,7 @@ public:
 	void partition(graph_t* quotient = NULL) {
 		create_initial_partition();
 		size_t n = m_blocks.size();
-		mCRL2log(verbose, "partitioner") << "Created " << n << " initial blocks.\n";
+		mCRL2log(mcrl2::log::verbose, "partitioner") << "Created " << n << " initial blocks.\n";
 
 		// Split into paradise / non-paradise blocks
 		for (typename blocklist_t::iterator B = m_blocks.begin(); n > 0; ++B, --n)
@@ -146,7 +146,12 @@ protected:
 		g.resize(m_blocks.size());
 
 		for (VertexIndex i = 0; i < m_pg.size(); ++i)
-		m_pg.vertex(i).visitcounter = 0;
+      m_pg.vertex(i).visitcounter = 0;
+
+		// Make sure node 0 is in block 0
+    size_t oldblock = m_pg.vertex(0).block->index;
+    m_pg.vertex(0).block->index = 0;
+    m_blocks.front().index = oldblock;
 
 		size_t src, dst, vc = 1;
 		for (typename blocklist_t::const_iterator B = m_blocks.begin(); B != m_blocks.end(); ++B, ++vc)
