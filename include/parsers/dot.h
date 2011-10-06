@@ -48,6 +48,23 @@ namespace graph
         }
         s << "}" << std::endl;
       }
+      template <typename Partitioner>
+      void
+      dump(std::ostream& s, Partitioner& p)
+      {
+        s << "digraph G {" << std::endl;
+        for (size_t i = 0; i < m_graph.size(); ++i)
+        {
+          vertex_t& v = m_graph.vertex(i);
+          s << "N" << i << " [";
+          m_formatter.format(s, i, v);
+          s << "];\n";
+          for (VertexSet::const_iterator it = v.out.begin(); it != v.out.end(); ++it)
+            s << "N" << i << " -> N" << *it << "\n";
+        }
+        p.dump(s);
+        s << "}" << std::endl;
+      }
     private:
       graph_t& m_graph;
       VertexFormatter& m_formatter;

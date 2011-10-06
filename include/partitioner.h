@@ -182,7 +182,7 @@ namespace graph
                 B1->divstable = false;
                 for (typename blocklist_t::iterator B = m_blocks.begin();
                     B != m_blocks.end(); ++B)
-                    {
+                {
                   B->stable = false;
                 }
               }
@@ -210,12 +210,11 @@ namespace graph
           for (typename blocklist_t::const_iterator B = m_blocks.begin();
               B != m_blocks.end(); ++B)
           {
-            s << "{ ";
+            s << "subgraph cluster_" << B->index << " { ";
             v = B->vertices.begin();
-            s << *v++;
             while (v != B->vertices.end())
             {
-              s << ", " << *v++;
+              s << 'N' << *v++ << "; ";
             }
             s << " }" << std::endl;
           }
@@ -241,6 +240,8 @@ namespace graph
           block_t& C = m_blocks.back();
           B.vertices.push_front(0);
           C.vertices.push_front(0);
+          B.stable = false;
+          C.stable = false;
           VertexList::iterator iB = B.vertices.begin();
           VertexList::iterator pB = iB++;
           VertexList::iterator iC = C.vertices.begin();
@@ -264,13 +265,18 @@ namespace graph
           C.vertices.pop_front();
           B.vertices.pop_front();
 
-          mCRL2log(mcrl2::log::debug, "partitioner")
-            << "Created block #" << C.index << ": " << sC << " nodes (left "
-                << sB << ").\n";
-
-          bool result = B.update(&C);
+          bool result = false;
+          if (B.update(&C))
+            result = true;
           if (C.update(&B))
-            return true;
+            result = true;
+
+          mCRL2log(mcrl2::log::debug, "partitioner")
+            << "Created block #" << C.index << " from #" << B.index << ": " << sC << " nodes (left "
+            << sB << "). Prio: "
+            << m_pg.vertex(C.vertices.front()).label.prio <<
+            ", successors: ";
+
           return result;
         }
 

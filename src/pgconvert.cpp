@@ -41,6 +41,15 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
     {
     }
 
+    template<typename graph_t, typename partitioner_t>
+    void dump_dot(graph_t& graph, partitioner_t& partitioner)
+    {
+      typedef typename graph_t::vertex_t vertex_t;
+      graph::pg::VertexFormatter<vertex_t> fmt;
+      graph::Parser<vertex_t, graph::dot> p(graph, fmt);
+      p.dump(std::cout, partitioner);
+    }
+
     template<typename graph_t>
     void
     collapse_sccs(graph_t& graph)
@@ -61,8 +70,6 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       pg.resize(pg.size() + 1);
       typename graph_t::vertex_t& divmark = pg.vertex(pg.size() - 1);
       divmark.label.div = true;
-      divmark.in.insert(pg.size() - 1);
-      divmark.out.insert(pg.size() - 1);
       for (size_t i = 0; i < pg.size() - 1; ++i)
       {
         typename graph_t::vertex_t& v = pg.vertex(i);
