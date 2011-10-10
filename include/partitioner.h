@@ -76,6 +76,7 @@ namespace graph
           unsigned char stable :1; ///< True when the block is stable in the current partition. Used by the partition refinement algorithms.
           unsigned char divstable :1;
           unsigned char visited :1;
+          unsigned char splittable :1;
       };
   };
 
@@ -114,79 +115,74 @@ namespace graph
         {
           bool found_splitter = true;
           block_t* B1 = NULL;
-          typename blocklist_t::iterator B2;
+          std::list<block_t*> splittable;
+          typename blocklist_t::reverse_iterator B2;
           create_initial_partition();
           mCRL2log(mcrl2::log::verbose, "partitioner")
             << "Created " << m_blocks.size() << " initial blocks.\n";
           while (found_splitter)
           {
-            found_splitter = false;
-            // Try to find a splitter for an unstable block
-            B2 = m_blocks.begin();
-            while (not found_splitter and B2 != m_blocks.end())
+            /* First, try to find a block that can be split by itself. */
+            for (B2 = m_blocks.rbegin(); B2 != m_blocks.rend(); ++B2)
             {
-              if (B2->divstable)
-              {
-                ++B2;
-                continue;
-              }
-              B1 = &(*B2);
-              if (split(B1))
-                found_splitter = true;
-              else
-                B2++->divstable = true;
+              if (!B2->divstable)
+                if (split(&(*B2)))
+                  splittable.push_back(&(*B2));
+                else
+                  B2->divstable = true;
             }
 
-            if (not found_splitter)
-              B2 = m_blocks.begin();
-            while (not found_splitter and (B2 != m_blocks.end()))
+            /* If nothing is found... */
+            if (splittable.empty())
+              B2 = m_blocks.rbegin();
+            /* ...try to find a block that can split another block. */
+            while (splittable.empty() and (B2 != m_blocks.rend()))
             {
               if (B2->stable)
               {
                 ++B2;
                 continue;
               }
-              std::list<block_t*> adjacent;
               for (VertexList::const_iterator src = B2->incoming.begin();
                   src != B2->incoming.end(); ++src)
               {
                 vertex_t& v = m_pg.vertex(*src);
                 v.visit();
-                if ((not v.block->visited) and (v.block != &(*B2)))
-                {
-                  adjacent.push_back(v.block);
-                  v.block->visited = true;
-                }
-              }
-              while (not adjacent.empty())
-              {
-                adjacent.front()->visited = false;
-                if (not found_splitter)
-                {
-                  B1 = adjacent.front();
-                  found_splitter = split(B1, &(*B2));
-                }
-                adjacent.pop_front();
+                v.block->visited = false;
               }
               for (VertexList::const_iterator src = B2->incoming.begin();
                   src != B2->incoming.end(); ++src)
-                m_pg.vertex(*src).clear();
-              if (not found_splitter)
-                B2++->stable = true;
+              {
+                vertex_t& v = m_pg.vertex(*src);
+                if ((not v.block->visited) and (v.block != &(*B2)))
+                {
+                  if (split(v.block, &(*B2)))
+                    splittable.push_back(v.block);
+                  v.block->visited = true;
+                }
+                v.clear();
+              }
+              B2++->stable = splittable.empty();
             }
 
-            if (found_splitter)
+            found_splitter = !splittable.empty();
+
+            bool reset_stable = false;
+            for (typename std::list<block_t*>::iterator B = splittable.begin(); B != splittable.end(); ++B)
             {
-              if (refine(*B1))
+              if (refine(*(*B)))
               {
-                B1->divstable = false;
-                for (typename blocklist_t::iterator B = m_blocks.begin();
-                    B != m_blocks.end(); ++B)
-                {
-                  B->stable = false;
-                }
+                (*B)->divstable = false;
+                reset_stable = true;
               }
             }
+            if (reset_stable)
+            {
+              for (typename blocklist_t::iterator B = m_blocks.begin();
+                  B != m_blocks.end(); ++B)
+                B->stable = false;
+            }
+            splittable.clear();
           }
           mCRL2log(mcrl2::log::verbose, "partitioner")
             << "Quotienting " << m_blocks.size() << " blocks.\n";
@@ -274,8 +270,7 @@ namespace graph
           mCRL2log(mcrl2::log::debug, "partitioner")
             << "Created block #" << C.index << " from #" << B.index << ": " << sC << " nodes (left "
             << sB << "). Prio: "
-            << m_pg.vertex(C.vertices.front()).label.prio <<
-            ", successors: ";
+            << m_pg.vertex(C.vertices.front()).label.prio << std::endl;
 
           return result;
         }
