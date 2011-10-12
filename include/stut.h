@@ -3,6 +3,7 @@
 
 #include "partitioner.h"
 #include <map>
+#include <list>
 
 namespace graph {
 
@@ -179,15 +180,15 @@ protected:
 			vertex_t& repr = quotient.vertex(dst);
 			repr.label = m_pg.vertex(*v).label;
 			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
-				m_pg.vertex(m_pg.vertex(*sv).block->index).clear();
+			  quotient.vertex(m_pg.vertex(*sv).block->index).clear();
 			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
 			{
 				src = m_pg.vertex(*sv).block->index;
-				if (not m_pg.vertex(src).visited())
+				if (not quotient.vertex(src).visited())
 				{
 					quotient.vertex(src).out.insert(dst);
 					repr.in.insert(src);
-					m_pg.vertex(src).visit();
+					quotient.vertex(src).visit();
 				}
 			}
 		}

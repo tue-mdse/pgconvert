@@ -4,6 +4,7 @@
 #include "pg.h"
 #include "partitioner.h"
 #include <map>
+#include <list>
 
 namespace graph {
 namespace pg {

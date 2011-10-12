@@ -8,10 +8,11 @@
 #include <auto_ptr.h>
 #ifdef __GNU_LIBRARY__
 #include <ext/slist>
-#else
-#include <list>
 #endif
+#include <list>
 #include <vector>
+#include <cstdlib>
+#include <ctime>
 
 namespace graph
 {
@@ -101,6 +102,7 @@ namespace graph
         Partitioner(graph_t& pg) :
             m_pg(pg)
         {
+          srand(time(NULL));
         }
         /**
          * @brief Finds the coarsest partition for @a pg. If quotient is given, then
@@ -260,6 +262,15 @@ namespace graph
           }
           C.vertices.pop_front();
           B.vertices.pop_front();
+
+          if ((float)rand() / RAND_MAX < 0.5f)
+          {
+            B.vertices.swap(C.vertices);
+            for (iB = B.vertices.begin(); iB != B.vertices.end(); ++iB)
+              m_pg.vertex(*iB).block = &B;
+            for (iC = C.vertices.begin(); iC != C.vertices.end(); ++iC)
+              m_pg.vertex(*iC).block = &C;
+          }
 
           bool result = false;
           if (B.update(&C))
