@@ -84,12 +84,12 @@ void collapse(std::vector<Vertex>& vertices, std::vector<VertexIndex>& sccs)
 
 	// Replace incoming/outgoing node indices by corresponding scc indices. Also
 	// make sure that vertex 0 is still vertex 0 after collapsing.
-	VertexIndex scc0 = sccs[0];
+  VertexIndex scc0 = sccs[0];
 	for (size_t i = 0; i < vertices.size(); ++i)
 	{
     if (sccs[i] == scc0)
       sccs[i] = 0;
-    else if (sccs[i] == 0)
+    else if (sccs[i] == 1)
       sccs[i] = scc0 - 1;
     else
       --sccs[i];
