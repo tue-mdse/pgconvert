@@ -41,7 +41,7 @@ class autscc : public mcrl2::utilities::tools::input_output_tool
       mCRL2log(mcrl2::log::verbose)
         << "Loading statespace." << std::endl;
       timer().start("load");
-      graph::Parser<typename graph_t::vertex_t, graph::aut> parser(
+      graph::Parser<graph_t::vertex_t, graph::aut> parser(
           graph);
       parser.load(s);
       timer().finish("load");
