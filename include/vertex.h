@@ -2,6 +2,7 @@
 #define __GRAPH_VERTEX_H
 
 #include <set>
+#include <cstring>
 
 namespace graph {
 

@@ -94,7 +94,8 @@ namespace graph
   enum FileFormat
   {
     pgsolver,
-    dot
+    dot,
+    aut
   };
 
   template<typename Vertex, FileFormat format>

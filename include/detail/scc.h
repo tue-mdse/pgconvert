@@ -25,7 +25,7 @@ namespace impl {
  * we assign consecutive numbers to SCCs to aid the compression process.
  */
 template <typename Vertex>
-void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& scc)
+size_t tarjan_iterative(const std::vector<Vertex>& vertices, std::vector<VertexIndex>& scc)
 {
 	size_t unused = 1, lastscc = 1;
 	std::vector<size_t> low;
@@ -39,7 +39,7 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 		while (not stack.empty())
 		{
 			size_t vi = stack.front();
-			Vertex& v = vertices[vi];
+            const Vertex& v = vertices[vi];
 
 			if (low[vi] == 0 and scc[vi] == 0)
 			{
@@ -75,6 +75,7 @@ void tarjan_iterative(std::vector<Vertex>& vertices, std::vector<VertexIndex>& s
 			}
 		}
 	}
+    return unused - 1;
 }
 
 template <typename Vertex>
