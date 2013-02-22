@@ -47,7 +47,7 @@ public:
 		{
 			if (split(&*B))
 			{
-				refine(*B);
+				this->refine(*B);
 			}
 		}
 
