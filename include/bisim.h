@@ -148,7 +148,7 @@ protected:
 			vertex_t& repr = quotient.vertex(dst);
 			repr.label = m_pg.vertex(*v).label;
 			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
-				quotient.vertex(m_pg.vertex(*sv).block->index).clear();
+				m_pg.vertex(m_pg.vertex(*sv).block->index).clear();
 			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
 			{
 				src = m_pg.vertex(*sv).block->index;
