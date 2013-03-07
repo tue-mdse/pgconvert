@@ -29,11 +29,8 @@ public:
 				vertex_t& v = pg.vertex(*i);
 				for (VertexSet::const_iterator src = v.in.begin(); src != v.in.end(); ++src)
 				{
-					if (pg.vertex(*src).block != this)
-					{
-						incoming.push_front(*src);
-						result = result or (pg.vertex(*src).block == has_edge_from);
-					}
+					incoming.push_front(*src);
+					result = result || (pg.vertex(*src).block == has_edge_from);
 				}
 			}
 			return result;
@@ -100,7 +97,7 @@ protected:
 	 */
 	bool split(const block_t* B)
 	{
-	  return split(B, B);
+		return split(B, B);
 	}
 	/**
 	 * @brief Attempts to split @a B1 using @a B2
@@ -116,14 +113,14 @@ protected:
 			vertex_t& vertex = m_pg.vertex(*v);
 			if (vertex.visited())
 			{
-			  no_states_visited = false;
-			  vertex.pos = true;
+				no_states_visited = false;
+				vertex.pos = true;
 			} else
-			  all_states_visited = false;
+				all_states_visited = false;
 		}
 		if (all_states_visited)
-		  for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
-			m_pg.vertex(*v).pos = false;
+			for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
+				m_pg.vertex(*v).pos = false;
 		return not (all_states_visited || no_states_visited);
 	}
 	/**
@@ -132,7 +129,7 @@ protected:
 	 * Quotienting is done by viewing each block as a vertex. The priority and player of a
 	 * block are defined as the priority and player of the first vertex in the block's
 	 * @c vertices member.
-	 * @param g ParityGame in which the quotient is stored.
+	 * @param quotient ParityGame in which the quotient is stored.
 	 */
 	void quotient(graph_t& quotient)
 	{
@@ -140,9 +137,9 @@ protected:
 		size_t src, dst, vc = 1;
 
 		// Make sure node 0 is in block 0
-    size_t oldblock = m_pg.vertex(0).block->index;
-    m_pg.vertex(0).block->index = 0;
-    m_blocks.front().index = oldblock;
+		size_t oldblock = m_pg.vertex(0).block->index;
+		m_pg.vertex(0).block->index = 0;
+		m_blocks.front().index = oldblock;
 
 		for (typename blocklist_t::const_iterator B = m_blocks.begin(); B != m_blocks.end(); ++B, ++vc)
 		{
@@ -151,11 +148,11 @@ protected:
 			vertex_t& repr = quotient.vertex(dst);
 			repr.label = m_pg.vertex(*v).label;
 			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
-				m_pg.vertex(m_pg.vertex(*sv).block->index).clear();
+				quotient.vertex(m_pg.vertex(*sv).block->index).clear();
 			for (VertexList::const_iterator sv = B->incoming.begin(); sv != B->incoming.end(); ++sv)
 			{
 				src = m_pg.vertex(*sv).block->index;
-				if (not m_pg.vertex(src).visited())
+				if (!m_pg.vertex(src).visited())
 				{
 					quotient.vertex(src).out.insert(dst);
 					repr.in.insert(src);
