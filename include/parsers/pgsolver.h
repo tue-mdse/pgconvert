@@ -1,6 +1,7 @@
 #include "pg.h"
 #include "graph.h"
 
+#include <cassert>
 #include <limits>
 #include <stdexcept>
 #include <sstream>
@@ -77,18 +78,42 @@ namespace graph
       {
         std::string firstword;
         s >> std::skipws >> firstword;
-        if (firstword != "parity")
+        if (firstword == "parity")
         {
+          size_t n;
+          char c;
+          s >> n;
+          m_pg.resize(n + 1);
+          s >> c;
+          if (c != ';')
+            parse_error(s, "Invalid header, expected semicolon.");
+
+          // mlsolver allows start keyword
+          std::string secondword;
+          s >> std::skipws >> secondword;
+          if(secondword == "start")
+          {
+            size_t start_n;
+            char c;
+            s >> start_n;
+            if(start_n != 0)
+              parse_error(s, "Invalid start vertex, expected 0.");
+            s >> c;
+            if (c != ';')
+              parse_error(s, "Invalid header, expected semicolon.");
+          }
+          else
+          {
+            s.seekg(-secondword.length(), std::ios::cur);
+            return;
+          }
+        }
+        else
+        {
+          assert(firstword != "start");
           s.seekg(-firstword.length(), std::ios::cur);
           return;
         }
-        size_t n;
-        char c;
-        s >> n;
-        m_pg.resize(n + 1);
-        s >> c;
-        if (c != ';')
-          parse_error(s, "Invalid header, expected semicolon.");
       }
 
       void
