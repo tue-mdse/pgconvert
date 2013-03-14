@@ -282,6 +282,26 @@ namespace graph
             << "Created block #" << C.index << " from #" << B.index << ": " << sC << " nodes (left "
             << sB << "). Prio: "
             << m_pg.vertex(C.vertices.front()).label.prio << std::endl;
+	  
+	  if(mCRL2logEnabled(mcrl2::log::debug1, "partitioner"))
+	  {
+	    mCRL2log(mcrl2::log::debug1, "partitioner")
+		<< "  block #" << B.index << " now contains the following vertices: " << std::endl;
+	    for(VertexList::const_iterator i = B.vertices.begin(); i != B.vertices.end(); ++i)
+	    {
+	      if(i != B.vertices.begin()) mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+	      mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+	    }
+	    mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+	    mCRL2log(mcrl2::log::debug1, "partitioner")
+		<< "  block #" << C.index << " now contains the following vertices: " << std::endl;
+	    for(VertexList::const_iterator i = C.vertices.begin(); i != B.vertices.end(); ++i)
+	    {
+	      if(i != C.vertices.begin()) mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+	      mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+	    }
+	    mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+	  }
 
           return result;
         }

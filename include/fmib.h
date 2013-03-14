@@ -50,31 +50,36 @@ public:
 			size = 0;
 			assert(!vertices.empty());
 			vertex_t repr = pg.vertex(*vertices.begin()); // Representative used to decide whether we contain multiple players.
+
 			// In initial update, set the .external fields right (assume they were initialised to 0)
-			if (has_edge_from == NULL) {
-				std::set<size_t> reach_blocks;
-				for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i) {
-					vertex_t& v = pg.vertex(*i);
-					for (VertexSet::const_iterator dst = v.out.begin(); dst != v.out.end(); ++dst)
-						reach_blocks.insert(pg.vertex(*dst).block->index);
-					v.external = reach_blocks.size();
-				}
+
+			for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i) {
+				vertex_t& v = pg.vertex(*i);
+
 			}
 
+			std::set<size_t> reach_blocks;
 			for (VertexList::const_iterator i = vertices.begin(); i != vertices.end(); ++i) {
 				vertex_t& v = pg.vertex(*i);
 				++size;
 				mixed_players = mixed_players || (repr.label.player != v.label.player);
 
+				// Record the number of blocks that v can reach
+				for (VertexSet::const_iterator dst = v.out.begin(); dst != v.out.end(); ++dst)
+					reach_blocks.insert(pg.vertex(*dst).block->index);
+				v.external = reach_blocks.size();
+				reach_blocks.clear();
+
+				// record incoming edges.
 				for (VertexSet::const_iterator src = v.in.begin(); src != v.in.end(); ++src) {
 					incoming.push_front(*src);
 					// record edges has_edge_from -> this
 					if (pg.vertex(*src).block == has_edge_from) {
 						result = true;
-						++pg.vertex(*src).external;
 					}
 				}
 			}
+
 			return result;
 		}
 		size_t size;
@@ -138,7 +143,22 @@ protected:
 
 		// Update all blocks to record meta-data
 		for (typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
+		{
 			B->update();
+
+			if(mCRL2logEnabled(mcrl2::log::debug1, "partitioner"))
+			{
+				mCRL2log(mcrl2::log::debug1, "partitioner")
+						<< "  block #" << B->index << " initially contains the following vertices: " << std::endl;
+				for(VertexList::const_iterator i = B->vertices.begin(); i != B->vertices.end(); ++i)
+				{
+					if(i != B->vertices.begin()) mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+					mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+				}
+				mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+			}
+		}
+
 	}
 
 	/**
@@ -163,7 +183,9 @@ protected:
 		if (all_states_visited)
 			for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
 				m_pg.vertex(*v).pos = false;
-		return ! (all_states_visited || no_states_visited);
+		bool result = ! (all_states_visited || no_states_visited);
+		mCRL2log(mcrl2::log::debug1, "split") << B1->index << ", " << B2->index << ": " << std::boolalpha << result << std::endl;
+		return result;
 	}
 
 	/**
@@ -181,8 +203,13 @@ protected:
 		bool result;
 
 		result = split(B, even);
+		mCRL2log(mcrl2::log::debug1, "split") << B->index << ", even: " << std::boolalpha << result << std::endl;
 		if (!result)
+		{
 			result = split(B, odd);
+			mCRL2log(mcrl2::log::debug1, "split") << B->index << ", odd: " << std::boolalpha << result << std::endl;
+		}
+
 		if (!result)
 			result = split(B, B);
 
@@ -249,7 +276,16 @@ private:
 		{
 			const vertex_t& v = m_pg.vertex(*vi);
 			if(v.label.player == p)
+			{
+
+				mCRL2log(mcrl2::log::debug1, "split") << "        "
+								      << "vertex " << *vi << " owned by player " << v.label.player
+								      << " has edges to multiple blocks? " << std::boolalpha
+								      << (m_pg.vertex(*vi).external > 1) << std::endl;
+
 				result = result || (m_pg.vertex(*vi).external > 1);
+
+			}
 		}
 
 		if(result)
