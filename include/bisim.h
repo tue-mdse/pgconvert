@@ -63,7 +63,7 @@ protected:
 	/**
 	 * @brief Creates the initial partition.
 	 *
-	 * A block is made for every priority occurring in the game.
+	 * A block is made for every label occurring in the game.
 	 */
 	void create_initial_partition()
 	{
@@ -97,7 +97,25 @@ protected:
 	 */
 	bool split(const block_t* B)
 	{
-		return split(B, B);
+		for (VertexList::const_iterator src = B->incoming.begin();
+		    src != B->incoming.end(); ++src)
+		{
+		  vertex_t& v = m_pg.vertex(*src);
+		  v.visit();
+		  v.block->visited = false;
+		}
+
+		bool result = split(B, B);
+
+		for (VertexList::const_iterator src = B->incoming.begin();
+		    src != B->incoming.end(); ++src)
+		{
+		  vertex_t& v = m_pg.vertex(*src);
+		  v.clear();
+		}
+		if(result)
+			mCRL2log(mcrl2::log::debug) << "Block " << B->index << " is a self-splitter" << std::endl;
+		return result;
 	}
 	/**
 	 * @brief Attempts to split @a B1 using @a B2
@@ -121,7 +139,7 @@ protected:
 		if (all_states_visited)
 			for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
 				m_pg.vertex(*v).pos = false;
-		return not (all_states_visited || no_states_visited);
+		return !(all_states_visited || no_states_visited);
 	}
 	/**
 	 * @brief Quotients the parity game and stores the result in @a g.

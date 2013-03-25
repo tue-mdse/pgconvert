@@ -211,7 +211,24 @@ protected:
 		}
 
 		if (!result)
+		{
+			for (VertexList::const_iterator src = B->incoming.begin();
+			    src != B->incoming.end(); ++src)
+			{
+			  vertex_t& v = m_pg.vertex(*src);
+			  v.visit();
+			  v.block->visited = false;
+			}
+
 			result = split(B, B);
+
+			for (VertexList::const_iterator src = B->incoming.begin();
+			    src != B->incoming.end(); ++src)
+			{
+			  vertex_t& v = m_pg.vertex(*src);
+			  v.clear();
+			}
+		}
 
 		return result;
 	}
