@@ -147,10 +147,12 @@ namespace graph
 	    for (B2 = m_blocks.rbegin(); B2 != m_blocks.rend(); ++B2)
 	    {
 	      if (!B2->divstable)
-		if (split(&(*B2)))
-		  splittable.push_back(&(*B2));
-		else
-		  B2->divstable = true;
+          {
+            if (split(&(*B2)))
+              splittable.push_back(&(*B2));
+            else
+              B2->divstable = true;
+          }
 	    }
 
 	    /* If nothing is found... */
