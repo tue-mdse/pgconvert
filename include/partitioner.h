@@ -8,6 +8,8 @@
 #include <memory>
 #ifdef __GNU_LIBRARY__
 #include <ext/slist>
+#else
+#include <forward_list>
 #endif
 #include <list>
 #include <vector>
@@ -20,7 +22,7 @@ namespace graph
 #ifdef __GNU_LIBRARY__
   typedef __gnu_cxx::slist<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
 #else
-  typedef std::list<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
+  typedef std::forward_list<graph::VertexIndex> VertexList; ///< List of vertices (used when VertexSet is too expensive).
 #endif
 
   class PartitionerTraits
