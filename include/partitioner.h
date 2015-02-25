@@ -5,7 +5,7 @@
 #include "graph.h"
 #include "vertex.h"
 #include "pg.h"
-#include <auto_ptr.h>
+#include <memory>
 #ifdef __GNU_LIBRARY__
 #include <ext/slist>
 #endif
