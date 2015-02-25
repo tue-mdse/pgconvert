@@ -132,7 +132,9 @@ namespace graph
 				<< "  block #" << B->index << " now contains the following vertices: " << std::endl;
 			for(VertexList::const_iterator i = B->vertices.begin(); i != B->vertices.end(); ++i)
 			{
-				if(i != B->vertices.begin()) mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+                if(i != B->vertices.begin()) {
+                    mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+                }
 				mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
 			}
 			mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
@@ -306,7 +308,9 @@ namespace graph
 		<< "  block #" << B.index << " now contains the following vertices: " << std::endl;
 	    for(VertexList::const_iterator i = B.vertices.begin(); i != B.vertices.end(); ++i)
 	    {
-	      if(i != B.vertices.begin()) mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+          if(i != B.vertices.begin()) {
+            mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+          }
 	      mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
 	    }
 	    mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
@@ -314,7 +318,10 @@ namespace graph
 		<< "  block #" << C.index << " now contains the following vertices: " << std::endl;
 	    for(VertexList::const_iterator i = C.vertices.begin(); i != B.vertices.end(); ++i)
 	    {
-	      if(i != C.vertices.begin()) mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+          if(i != C.vertices.begin())
+          {
+            mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+          }
 	      mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
 	    }
 	    mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
