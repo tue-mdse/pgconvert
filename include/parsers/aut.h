@@ -41,7 +41,7 @@ namespace graph
         std::string token;
         std::streampos p = s.tellg();
         std::streamsize l = 0;
-        std::streamsize b = 0;
+        std::streampos b = 0;
         s >> token;
         s.seekg(0, std::ios::beg);
         while (s.tellg() < p)
