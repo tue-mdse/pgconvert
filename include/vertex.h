@@ -16,11 +16,11 @@ template <typename Label>
 struct Vertex
 {
 public:
-	typedef Label label_t;
-	label_t label;
-	VertexSet out; ///< Set of indices of vertices to which this vertex has an outgoing edge.
-	VertexSet in;  ///< Set of indices of vertices from which this vertex has an incoming edge.
-	void mark_scc() {};
+  typedef Label label_t;
+  label_t label;
+  VertexSet out; ///< Set of indices of vertices to which this vertex has an outgoing edge.
+  VertexSet in;  ///< Set of indices of vertices from which this vertex has an incoming edge.
+  void mark_scc() {};
 };
 
 }

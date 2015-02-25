@@ -57,7 +57,7 @@ namespace graph
         {
           size_t result = 0;
           for (typename vertices_t::const_iterator v = m_vertices.begin(); v != m_vertices.end(); ++v)
-        	result += v->out.size();
+          result += v->out.size();
           return result;
         }
         /**
