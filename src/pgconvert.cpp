@@ -8,8 +8,8 @@
 #include "stut.h"
 #include "pg.h"
 
-#include "mcrl2/utilities/input_output_tool.h"
-#include "mcrl2/utilities/logger.h"
+#include "cppcli/input_output_tool.h"
+#include "cpplogging/logger.h"
 
 #include <sstream>
 #include <iostream>
@@ -19,7 +19,7 @@
  * @class pgconvert
  * @brief Tool class that can execute parity game reductions.
  */
-class pgconvert : public mcrl2::utilities::tools::input_output_tool
+class pgconvert : public tools::input_output_tool
 {
   private:
     Equivalence m_equivalence;
@@ -27,7 +27,7 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
     std::auto_ptr<std::ofstream> m_ofstream;
   public:
     pgconvert() :
-  mcrl2::utilities::tools::input_output_tool(
+  tools::input_output_tool(
   // Tool name:
       "pgconvert",
       // Author:
@@ -58,7 +58,7 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       timer().start("scc reduction");
       graph.collapse_sccs();
       timer().finish("scc reduction");
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Parity game contains " << graph.size() << " nodes and "
       << graph.num_edges() << " edges after SCC reduction."
       << std::endl;
@@ -119,7 +119,7 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
     pg.vertex(i - 1) = pg.vertex(i);
       }
       pg.resize(pg.size() - 1);
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Parity game contains " << pg.size() << " nodes and "
       << pg.num_edges() << " edges after restoring divergences."
       << std::endl;
@@ -135,7 +135,7 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       timer().finish("partition refinement");
       if (output)
       {
-  mCRL2log(mcrl2::log::verbose)
+  cpplog(cpplogging::verbose)
     << "Parity game contains " << output->size() << " nodes and "
         << output->num_edges() << " edges after " << e.desc()
         << " reduction." << std::endl;
@@ -146,13 +146,13 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
     void
     load(graph_t& graph, std::istream& s)
     {
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Loading parity game." << std::endl;
       timer().start("load");
       graph::Parser<typename graph_t::vertex_t, graph::pgsolver> parser(graph);
       parser.load(s);
       timer().finish("load");
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Parity game contains " << graph.size() << " nodes and "
       << graph.num_edges() << " edges." << std::endl;
     }
@@ -181,7 +181,7 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       }
       else
   m_input_filename = "standard input";
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Reading from " << m_input_filename << "." << std::endl;
       return *instream;
     }
@@ -198,7 +198,7 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       }
       else
   m_output_filename = "standard output";
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Writing to " << m_output_filename << "." << std::endl;
       return *outstream;
     }
@@ -315,13 +315,13 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       save(pg1, outstream);
     }
 
-    /// @brief Runs the tool (see mcrl2::utilities::tools::input_output_tool::run).
+    /// @brief Runs the tool (see tools::input_output_tool::run).
     bool
     run()
     {
       std::istream& instream = open_input();
       std::ostream& outstream = open_output();
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
   << "Performing " << m_equivalence.desc() << " reduction." << std::endl;
       if (m_equivalence == Equivalence::scc)
   run_scc(instream, outstream);
@@ -340,11 +340,11 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
       return true;
     }
   protected:
-    /// @brief Adds the --equivalence option (see mcrl2::utilities::tools::input_output_tool::add_options).
+    /// @brief Adds the --equivalence option (see tools::input_output_tool::add_options).
     void
-    add_options(mcrl2::utilities::interface_description& desc)
+    add_options(interface_description& desc)
     {
-      mcrl2::utilities::tools::input_output_tool::add_options(desc);
+      tools::input_output_tool::add_options(desc);
       unsigned int i = 0;
       std::stringstream eqs;
       std::string eq = Equivalence::name(0);
@@ -355,14 +355,14 @@ class pgconvert : public mcrl2::utilities::tools::input_output_tool
   eq = Equivalence::name(++i);
       }
       desc.add_option("equivalence",
-    mcrl2::utilities::make_mandatory_argument("NAME"),
+    make_mandatory_argument("NAME"),
     "The conversion method to use, choose from" + eqs.str(), 'e');
     }
-    /// @brief Parses the --equivalence option (see mcrl2::utilities::tools::input_output_tool::parse_options).
+    /// @brief Parses the --equivalence option (see tools::input_output_tool::parse_options).
     void
-    parse_options(const mcrl2::utilities::command_line_parser& parser)
+    parse_options(const command_line_parser& parser)
     {
-      mcrl2::utilities::tools::input_output_tool::parse_options(parser);
+      tools::input_output_tool::parse_options(parser);
       if (parser.options.count("equivalence"))
       {
   m_equivalence = Equivalence(parser.option_argument("equivalence"));

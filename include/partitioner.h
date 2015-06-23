@@ -1,7 +1,7 @@
 #ifndef __PARTITIONER_H
 #define __PARTITIONER_H
 
-#include "mcrl2/utilities/logger.h"
+#include "cpplogging/logger.h"
 #include "graph.h"
 #include "vertex.h"
 #include "pg.h"
@@ -114,24 +114,24 @@ namespace graph
     std::list<block_t*> splittable;
     typename blocklist_t::reverse_iterator B2;
     create_initial_partition();
-    mCRL2log(mcrl2::log::verbose, "partitioner")
+    cpplog(cpplogging::verbose, "partitioner")
       << "Created " << m_blocks.size() << " initial blocks.\n";
-    if(mCRL2logEnabled(mcrl2::log::debug1, "partitioner"))
+    if(cpplogEnabled(cpplogging::debug1, "partitioner"))
     {
     for(typename blocklist_t::iterator B = m_blocks.begin(); B != m_blocks.end(); ++B)
     {
-      mCRL2log(mcrl2::log::debug1, "partitioner")
+      cpplog(cpplogging::debug1, "partitioner")
         << "  block #" << B->index << " now contains the following vertices: " << std::endl;
       for(VertexList::const_iterator i = B->vertices.begin(); i != B->vertices.end(); ++i)
       {
                 if(i != B->vertices.begin()) {
-                    mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+                    cpplog(cpplogging::debug1, "partitioner") << ", ";
                 }
-        mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+        cpplog(cpplogging::debug1, "partitioner") << *i;
       }
-      mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+      cpplog(cpplogging::debug1, "partitioner") << std::endl;
     }
-    mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+    cpplog(cpplogging::debug1, "partitioner") << std::endl;
     }
     while (found_splitter)
     {
@@ -199,7 +199,7 @@ namespace graph
       }
       splittable.clear();
     }
-    mCRL2log(mcrl2::log::verbose, "partitioner")
+    cpplog(cpplogging::verbose, "partitioner")
       << "Quotienting " << m_blocks.size() << " blocks.\n";
     if (quotient)
       this->quotient(*quotient);
@@ -291,34 +291,34 @@ namespace graph
     if (C.update(&B))
       result = true;
 
-    mCRL2log(mcrl2::log::debug, "partitioner")
+    cpplog(cpplogging::debug, "partitioner")
       << "Created block #" << C.index << " from #" << B.index << ": " << sC << " nodes (left "
       << sB << "). Prio: "
       << m_pg.vertex(C.vertices.front()).label.prio << std::endl;
 
-    if(mCRL2logEnabled(mcrl2::log::debug1, "partitioner"))
+    if(cpplogEnabled(cpplogging::debug1, "partitioner"))
     {
-      mCRL2log(mcrl2::log::debug1, "partitioner")
+      cpplog(cpplogging::debug1, "partitioner")
     << "  block #" << B.index << " now contains the following vertices: " << std::endl;
       for(VertexList::const_iterator i = B.vertices.begin(); i != B.vertices.end(); ++i)
       {
           if(i != B.vertices.begin()) {
-            mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+            cpplog(cpplogging::debug1, "partitioner") << ", ";
           }
-        mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+        cpplog(cpplogging::debug1, "partitioner") << *i;
       }
-      mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
-      mCRL2log(mcrl2::log::debug1, "partitioner")
+      cpplog(cpplogging::debug1, "partitioner") << std::endl;
+      cpplog(cpplogging::debug1, "partitioner")
     << "  block #" << C.index << " now contains the following vertices: " << std::endl;
       for(VertexList::const_iterator i = C.vertices.begin(); i != B.vertices.end(); ++i)
       {
           if(i != C.vertices.begin())
           {
-            mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+            cpplog(cpplogging::debug1, "partitioner") << ", ";
           }
-        mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+        cpplog(cpplogging::debug1, "partitioner") << *i;
       }
-      mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+      cpplog(cpplogging::debug1, "partitioner") << std::endl;
     }
 
     return result;

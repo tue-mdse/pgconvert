@@ -115,7 +115,7 @@ protected:
     }
     if(result)
         {
-          mCRL2log(mcrl2::log::debug) << "Block " << B->index << " is a self-splitter" << std::endl;
+          cpplog(cpplogging::debug) << "Block " << B->index << " is a self-splitter" << std::endl;
         }
     return result;
   }

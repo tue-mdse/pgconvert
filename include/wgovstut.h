@@ -40,7 +40,7 @@ public:
   void partition(graph_t* quotient = NULL) {
     create_initial_partition();
     size_t n = m_blocks.size();
-    mCRL2log(mcrl2::log::verbose, "partitioner") << "Created " << n << " initial blocks.\n";
+    cpplog(cpplogging::verbose, "partitioner") << "Created " << n << " initial blocks.\n";
 
     // Split into paradise / non-paradise blocks
     for (typename blocklist_t::iterator B = m_blocks.begin(); n > 0; ++B, --n)
