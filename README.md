@@ -3,20 +3,29 @@ pgconvert
 
 Tool to reduce parity games.
 
+Prerequisites
+-------------
+
+Compilation of pgconvert requires the boost regex library to be available.
+
 Installation
 ------------
 
-To build the tool an installation of mCRL2 is required. Assuming that mCRL2
-has been installed to `/path/to/mcrl2`, assuming the standard layout of the
-mCRL2 installation, configure and install using
+After checking out the git repository, make sure to also update the submodules (for commandline and logging libraries) using the following command (note the argument `--recursive`)
 
-    cmake -DMCRL2_INCLUDE=/path/to/mcrl2/include -DMCRL2_LIB=/path/to/mcrl2/lib/mcrl2
+    git submodule update --init --recursive
+
+To build the tool, configure and build using
+
+    cmake
     make
+
+If you want to install the tool (by default to `/usr/local`)
 
 Usage
 -----
 
-The tool allows you to use the following reductions:
+The tool takes parity games in [PGSolver](https://github.com/tcsprojects/pgsolver) format, and allows you to use several reductions. The following reductions are supported:
 
 * `-escc` reduction of the game by identifying strongly connected components of equivalent vertices,
 * `-ebisim` reduction of the game using strong bisimulation,
@@ -26,3 +35,16 @@ The tool allows you to use the following reductions:
 * `-egstut2` reduction by first identifying sccs (`-escc`) and then using governed stuttering equivalence reduction, and
 * `-ewgstut` reduction using weak stuttering equivalence reduction, this reduction is experimental, and most likely unsound.
 
+Additionally, the tool supports the following options:
+
+* `--timings[=FILE]` append timing measurements to FILE. Measurements are written to standard error if no FILE is provided
+* `-q, --quiet` do not display warning messages
+* `-v, --verbose` display short intermediate messages
+* `-d, --debug` display detailed intermediate messages
+* `--log-level=LEVEL` display intermediate messages up to and including LEVEL
+* `-h, --help` display help informatixon
+* `--version` display version information
+
+For example, to reduce the parity game in the file `example.gm` using governed stuttering equivalence and store the result in `reduced.gm`, execute the following command:
+
+    pgsolver -egstut example.gm reduced.gm

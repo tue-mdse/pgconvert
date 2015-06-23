@@ -2,8 +2,8 @@
 #include "detail/scc.h"
 #include "lts.h"
 
-#include "mcrl2/utilities/input_output_tool.h"
-#include "mcrl2/utilities/logger.h"
+#include "cppcli/input_output_tool.h"
+#include "cpplogging/logger.h"
 
 #include <sstream>
 #include <iostream>
@@ -13,7 +13,7 @@
  * @class pgconvert
  * @brief Tool class that can execute parity game reductions.
  */
-class autscc : public mcrl2::utilities::tools::input_output_tool
+class autscc : public tools::input_output_tool
 {
   private:
     std::auto_ptr<std::ifstream> m_ifstream;
@@ -21,7 +21,7 @@ class autscc : public mcrl2::utilities::tools::input_output_tool
   public:
     typedef graph::KripkeStructure<graph::Vertex<graph::lts::DivLabel> > graph_t;
     autscc() :
-        mcrl2::utilities::tools::input_output_tool(
+        tools::input_output_tool(
         // Tool name:
             "autscc",
             // Author:
@@ -38,14 +38,14 @@ class autscc : public mcrl2::utilities::tools::input_output_tool
     void
     load(graph_t& graph, std::istream& s)
     {
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
         << "Loading statespace." << std::endl;
       timer().start("load");
       graph::Parser<graph_t::vertex_t, graph::aut> parser(
           graph);
       parser.load(s);
       timer().finish("load");
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
         << "Parity game contains " << graph.size() << " nodes and "
             << graph.num_edges() << " edges." << std::endl;
     }
@@ -78,7 +78,7 @@ class autscc : public mcrl2::utilities::tools::input_output_tool
       }
       else
         m_input_filename = "standard input";
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
         << "Reading from " << m_input_filename << "." << std::endl;
       return *instream;
     }
@@ -95,7 +95,7 @@ class autscc : public mcrl2::utilities::tools::input_output_tool
       }
       else
         m_output_filename = "standard output";
-      mCRL2log(mcrl2::log::verbose)
+      cpplog(cpplogging::verbose)
         << "Writing to " << m_output_filename << "." << std::endl;
       return *outstream;
     }

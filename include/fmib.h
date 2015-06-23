@@ -146,19 +146,19 @@ protected:
     {
       B->update();
 
-      if(mCRL2logEnabled(mcrl2::log::debug1, "partitioner"))
+      if(cpplogEnabled(cpplogging::debug1, "partitioner"))
       {
-        mCRL2log(mcrl2::log::debug1, "partitioner")
+        cpplog(cpplogging::debug1, "partitioner")
             << "  block #" << B->index << " initially contains the following vertices: " << std::endl;
         for(VertexList::const_iterator i = B->vertices.begin(); i != B->vertices.end(); ++i)
         {
                     if(i != B->vertices.begin())
                     {
-                      mCRL2log(mcrl2::log::debug1, "partitioner") << ", ";
+                      cpplog(cpplogging::debug1, "partitioner") << ", ";
                     }
-          mCRL2log(mcrl2::log::debug1, "partitioner") << *i;
+          cpplog(cpplogging::debug1, "partitioner") << *i;
         }
-        mCRL2log(mcrl2::log::debug1, "partitioner") << std::endl;
+        cpplog(cpplogging::debug1, "partitioner") << std::endl;
       }
     }
 
@@ -187,7 +187,7 @@ protected:
       for (VertexList::const_iterator v = B1->vertices.begin(); v != B1->vertices.end(); ++v)
         m_pg.vertex(*v).pos = false;
     bool result = ! (all_states_visited || no_states_visited);
-    mCRL2log(mcrl2::log::debug1, "split") << B1->index << ", " << B2->index << ": " << std::boolalpha << result << std::endl;
+    cpplog(cpplogging::debug1, "split") << B1->index << ", " << B2->index << ": " << std::boolalpha << result << std::endl;
     return result;
   }
 
@@ -206,11 +206,11 @@ protected:
     bool result;
 
     result = split(B, even);
-    mCRL2log(mcrl2::log::debug1, "split") << B->index << ", even: " << std::boolalpha << result << std::endl;
+    cpplog(cpplogging::debug1, "split") << B->index << ", even: " << std::boolalpha << result << std::endl;
     if (!result)
     {
       result = split(B, odd);
-      mCRL2log(mcrl2::log::debug1, "split") << B->index << ", odd: " << std::boolalpha << result << std::endl;
+      cpplog(cpplogging::debug1, "split") << B->index << ", odd: " << std::boolalpha << result << std::endl;
     }
 
     if (!result)
@@ -298,7 +298,7 @@ private:
       if(v.label.player == p)
       {
 
-        mCRL2log(mcrl2::log::debug1, "split") << "        "
+        cpplog(cpplogging::debug1, "split") << "        "
                       << "vertex " << *vi << " owned by player " << v.label.player
                       << " has edges to multiple blocks? " << std::boolalpha
                       << (m_pg.vertex(*vi).external > 1) << std::endl;
